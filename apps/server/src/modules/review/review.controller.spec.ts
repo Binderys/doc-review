@@ -2364,6 +2364,189 @@ describe("exact-head round transitions", () => {
   });
 });
 
+// #3 criterion 3: pin the `reconcileAnchor` drift arms that shared source does NOT couple
+// to the throwing validators. The range/line arms share `head-text.ts` helpers with the
+// validators, so they cannot diverge; the rendered-decision, file/locator, and bare-file
+// arms - and, critically, the ORDER of the locator-less file gate versus the
+// removed-status gate - are structurally independent, so they are pinned here by driving
+// the real predicate through the public reconcile surface (a mechanism the repo already
+// uses for carry-forward drift). The rendered-reattach, locator-inclusion, and
+// bare-file present/absent decisions are already pinned by the "exact-head round
+// transitions" matrix above; this block adds the untested removed-status gate and its
+// ordering, so a change to that gate's logic or position fails a test.
+describe("reconcileAnchor removed-status gate and ordering (#3 drift-pin)", () => {
+  let app: INestApplication | undefined;
+
+  const fixture = REVIEW_LOOP;
+  const slug = `${fixture.owner}/${fixture.repo}`;
+  const route = `/pr/${slug}/${fixture.number}`;
+  const secondHeadSha = fixture.secondHeadSha;
+
+  const reviewText = normalizeMirrorReviewText(fixture.mirrorHead);
+  const RENDERED_QUOTE = "Quillibrium result";
+  const RENDERED_START = reviewText.indexOf(RENDERED_QUOTE);
+  const RENDERED_END = RENDERED_START + RENDERED_QUOTE.length;
+
+  const rangeAnchor: FeedbackAnchor = {
+    scope: "range",
+    path: fixture.mirrorPath,
+    startLine: 3,
+    endLine: 3,
+    quote: "The Quillibrium result is ready.",
+    body: "RangeRemovedPin3",
+  };
+  const lineAnchor: FeedbackAnchor = {
+    scope: "line",
+    path: fixture.htmlPath,
+    line: 3,
+    quote: "<body><p>Exact Spindlewick source line.</p></body>",
+    body: "LineRemovedPin3",
+  };
+  const renderedAnchor: FeedbackAnchor = {
+    scope: "rendered",
+    format: "md",
+    path: fixture.mirrorPath,
+    quote: RENDERED_QUOTE,
+    prefix: reviewText.slice(Math.max(0, RENDERED_START - 4), RENDERED_START),
+    suffix: reviewText.slice(RENDERED_END, RENDERED_END + 12),
+    start: RENDERED_START,
+    end: RENDERED_END,
+    selectorVersion: 1,
+    body: "RenderedRemovedPin3",
+  };
+  const locatorAnchor: FeedbackAnchor = {
+    scope: "file",
+    path: fixture.canonicalPath,
+    locator: {
+      section: "Recommendation",
+      quote: "Exact nearby canonical Quasartext.",
+    },
+    body: "LocatorRemovedPin3",
+  };
+  const pdfAnchor: FeedbackAnchor = {
+    scope: "file",
+    path: fixture.pdfPath,
+    body: "PdfRemovedPin3",
+  };
+
+  afterEach(async () => {
+    await app?.close();
+    app = undefined;
+  });
+
+  const reconcile = async () => {
+    const res = await request(app!.getHttpServer())
+      .post(`${route}/review/reconcile`)
+      .expect(200);
+    return reviewRoundSchema.parse((res.body as { data: unknown }).data);
+  };
+
+  // Plants the second head with content BYTE-IDENTICAL to the first for every path, so a
+  // content check (a bypassed removed-status gate falling through to the scope arm) would
+  // report not-drifted. That isolates the pins: drift=true can only come from the
+  // removed-status gate, and the bare-file drift=false only from the locator-less file
+  // gate winning the race against it.
+  const plantIdenticalSecondHead = (fake: FakeGitHubSource): void => {
+    const ref = secondHeadSha;
+    fake.setBlob(slug, ref, {
+      path: fixture.mirrorPath,
+      ref,
+      bytes: Buffer.from(fixture.mirrorHead, "utf8"),
+    });
+    fake.setBlob(slug, ref, {
+      path: fixture.htmlPath,
+      ref,
+      bytes: Buffer.from(fixture.htmlHead, "utf8"),
+    });
+    fake.setBlob(slug, ref, {
+      path: fixture.canonicalPath,
+      ref,
+      bytes: buildMinimalDocx(
+        "Recommendation. Exact nearby canonical Quasartext.",
+      ),
+    });
+    fake.setBlob(slug, ref, {
+      path: fixture.pdfPath,
+      ref,
+      bytes: Buffer.from(fixture.pdfBytes),
+    });
+  };
+
+  // Creates the anchor on the live first head (where its file is `modified`, so validation
+  // passes and it persists), then advances to a second head where exactly `removedPath`
+  // flips to `removed` while every file's bytes stay identical, and reconciles.
+  const carryThenMarkRemoved = async (
+    fake: FakeGitHubSource,
+    anchor: FeedbackAnchor,
+    removedPath: string,
+  ) => {
+    const created = await request(app!.getHttpServer())
+      .post(`${route}/comments`)
+      .send(anchor)
+      .expect(201);
+    const id = reviewCommentSchema.parse(
+      (created.body as { data: unknown }).data,
+    ).id;
+
+    fake.setPullRequest(slug, reviewLoopMetadata(secondHeadSha));
+    fake.setChangedFiles(
+      slug,
+      fixture.number,
+      [
+        fixture.mirrorPath,
+        fixture.htmlPath,
+        fixture.canonicalPath,
+        fixture.pdfPath,
+      ].map((path): ChangedFile => ({
+        path,
+        status: path === removedPath ? "removed" : "modified",
+      })),
+    );
+    plantIdenticalSecondHead(fake);
+
+    const round = await reconcile();
+    return round.comments.find((entry) => entry.id === id);
+  };
+
+  it.each<[string, FeedbackAnchor, string]>([
+    ["a Mirror source-range", rangeAnchor, fixture.mirrorPath],
+    ["an HTML source-line", lineAnchor, fixture.htmlPath],
+    ["a rendered-text", renderedAnchor, fixture.mirrorPath],
+    ["a Canonical locator", locatorAnchor, fixture.canonicalPath],
+  ])(
+    "drifts %s anchor whose document becomes removed, even with byte-identical head content",
+    async (_name, anchor, removedPath) => {
+      const fake = stageReviewLoop();
+      app = await buildApp(fake);
+
+      const carried = await carryThenMarkRemoved(fake, anchor, removedPath);
+
+      expect(carried).toMatchObject({
+        headSha: secondHeadSha,
+        carriedForward: true,
+        drifted: true,
+      });
+    },
+  );
+
+  it("keeps a removed bare-file anchor not-drifted: the locator-less file gate is decided before the removed-status gate", async () => {
+    const fake = stageReviewLoop();
+    app = await buildApp(fake);
+
+    const carried = await carryThenMarkRemoved(
+      fake,
+      pdfAnchor,
+      fixture.pdfPath,
+    );
+
+    expect(carried).toMatchObject({
+      headSha: secondHeadSha,
+      carriedForward: true,
+      drifted: false,
+    });
+  });
+});
+
 describe("complete multi-head review lifecycle", () => {
   let app: INestApplication | undefined;
   let fetchSpy: jest.SpyInstance;
