@@ -2554,7 +2554,8 @@ describe("reconcileAnchor removed-status gate and ordering (#3 drift-pin)", () =
   // `modified` (live) but its body reproduces `canonicalBody`, and reconciles. Drift here is
   // decided solely by the locator-inclusion arm: BOTH the stored `section` and `quote` must
   // survive in the head's raw text, so dropping either one drifts. `buildMinimalDocx`'s body
-  // is the exact mammoth raw text, so each case controls one side of that check.
+  // is the raw text's sole paragraph (mammoth appends a trailing paragraph separator, so
+  // the raw text is the body plus "\n\n"), so each case controls one side of that check.
   const carryLocatorThenReplaceCanonical = async (
     fake: FakeGitHubSource,
     canonicalBody: string,
