@@ -1,0 +1,14 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+allowBuilds:
+  "@swc/core": true
+  cpu-features: false
+  esbuild: true
+  protobufjs: false
+  ssh2: false
+overrides:
+  # Force a transitive security patch ahead of the parent's pin: @nestjs/platform-express@11
+  # depends on multer exactly 2.1.1, which has DoS advisories fixed in 2.2.0 (a minor,
+  # API-compatible bump). Drop this override once NestJS bumps its multer dependency.
+  multer: ^2.2.0

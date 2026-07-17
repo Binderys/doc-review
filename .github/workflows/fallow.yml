@@ -1,0 +1,40 @@
+name: Fallow
+
+# Advisory (NOT a required check): Fallow runs diff-scoped against the PR base, so
+# only dead code / duplication / complexity *introduced by the PR* affects its
+# verdict - the scaffold's baseline false-positives (intentionally-unused exports,
+# reflection-only deps) are reported as inherited and never fail. It is deliberately
+# kept out of the required `Quality gate` job. See docs/adr/0002 (reconciliation
+# pending) and .fallowrc.json for the entry-point / dependency suppressions.
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: fallow-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fallow:
+    name: Fallow (advisory)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          # Diff-scoped audit needs history to diff against origin/main.
+          fetch-depth: 0
+
+      - name: Fallow diff-scoped audit
+        uses: fallow-rs/fallow@e36026dfc0f00bfdf8dab889efc58ab86e5ec466 # v2.104.0
+        with:
+          version: "3.4.2"
+          changed-since: origin/main
+          # Truly advisory: report findings as PR annotations without failing the
+          # job, so a false-positive never red-Xes a PR. Promote to a required gate
+          # (fail-on-issues + add to the Quality gate) once the signal is trusted.
+          fail-on-issues: false

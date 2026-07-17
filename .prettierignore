@@ -1,0 +1,7 @@
+# Generated / build output - owned by their tools, not Prettier
+pnpm-lock.yaml
+dist/
+.turbo/
+coverage/
+
+

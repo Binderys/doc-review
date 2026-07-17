@@ -1,0 +1,17 @@
+node_modules/
+dist/
+coverage/
+.turbo/
+.pnpm-store/
+.data/
+
+.env
+.env.*
+!.env.example
+
+*.log
+*.tsbuildinfo
+.DS_Store
+
+# Claude Code session worktrees
+.claude/worktrees/
