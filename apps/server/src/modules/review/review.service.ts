@@ -10,7 +10,6 @@ import {
   type ReviewRound,
   type ReviewSurfaceResponse,
 } from "@doc-review/api-contracts";
-import { contextAgreesAt } from "@doc-review/shared";
 import {
   BadRequestException,
   ConflictException,
@@ -24,9 +23,13 @@ import type {
   PullRequestMetadata,
 } from "../dashboard/github/github-source";
 import { GitHubSource } from "../dashboard/github/github-source";
-import { convertCanonicalHtml } from "./renderers/canonical-html";
-import { normalizeHtmlReviewText } from "./renderers/html-review-text";
-import { normalizeMirrorReviewText } from "./renderers/mirror-review-text";
+import { validateFeedbackAnchor } from "./anchor-validation";
+import {
+  addressableHeadLines,
+  addressedHtmlLine,
+  addressedMirrorRange,
+  reproduceRenderedReviewText,
+} from "./head-text";
 import { FileRendererRegistry } from "./renderers/renderer";
 import { decideRenderedTextReattachment } from "./rendered-text-reattachment";
 import {
@@ -85,39 +88,6 @@ function toChangeType(status: GitHubFileStatus): ChangeType {
     default:
       return "modified";
   }
-}
-
-function addressableHeadLines(text: string): string[] {
-  const lines = text.split(/\r?\n/);
-  if (lines.at(-1) === "") {
-    lines.pop();
-  }
-  return lines;
-}
-
-// Reproduces a rendered document's authoritative normalized review-text from its exact
-// head bytes, by the anchor's declared format: a Mirror flattens its marked tokens, the
-// sanitized HTML copy applies the same allowlist + block walk the client displays, and a
-// Canonical goes through the single owner of Canonical HTML production
-// (`convertCanonicalHtml`) - the SAME function the docx renderer ships the mounted HTML and
-// review-text with, so the mounted HTML and this validation reproduction agree by
-// construction. It takes the raw head BYTES, not decoded text, because a docx head is a
-// binary zip - md/html decode to UTF-8, docx is fed to mammoth. The single owner of the
-// rendered-text reproduction both the anchor validation and the drift check rely on, so a
-// new supported format is added in one place. The wire contract binds `format` to `path`,
-// so the format is authoritative here.
-async function reproduceRenderedReviewText(
-  format: RenderedTextFormat,
-  headBytes: Buffer,
-): Promise<string> {
-  if (format === "docx") {
-    const { reviewText } = await convertCanonicalHtml(headBytes);
-    return reviewText;
-  }
-  const headText = headBytes.toString("utf8");
-  return format === "md"
-    ? normalizeMirrorReviewText(headText)
-    : normalizeHtmlReviewText(headText);
 }
 
 function toReviewComment(state: ReviewCommentState): ReviewComment {
@@ -574,14 +544,14 @@ export class ReviewService {
       if (anchor.scope === "range") {
         const lines = addressableHeadLines(await headText(anchor.path));
         return carried(
-          lines.slice(anchor.startLine - 1, anchor.endLine).join("\n") !==
+          addressedMirrorRange(lines, anchor.startLine, anchor.endLine) !==
             anchor.quote,
         );
       }
 
       if (anchor.scope === "line") {
         const lines = addressableHeadLines(await headText(anchor.path));
-        return carried(lines[anchor.line - 1] !== anchor.quote);
+        return carried(addressedHtmlLine(lines, anchor.line) !== anchor.quote);
       }
 
       // A rendered-text anchor is reattached through the pure #68 decision against the
@@ -612,124 +582,21 @@ export class ReviewService {
     };
   }
 
-  private async validateAnchor(
+  // The creation-time anchor gate. A thin dispatcher: it binds the head-byte reader to
+  // this PR's live `GitHubSource` + head SHA and hands off to the per-scope validators
+  // (`anchor-validation.ts`), which throw a `BadRequestException` naming the exact
+  // failure. Those validators decide the addressed-head content through the same
+  // `head-text.ts` helpers the drift predicate (`reconcileAnchor`) uses, so the throwing
+  // gate and the non-throwing drift arms cannot silently diverge.
+  private validateAnchor(
     slug: string,
     headSha: string,
     changedFiles: ChangedFile[],
     anchor: FeedbackAnchor,
   ): Promise<void> {
-    if (anchor.scope === "review") {
-      return;
-    }
-
-    if (!changedFiles.some((file) => file.path === anchor.path)) {
-      throw new BadRequestException("Feedback path is not a changed document");
-    }
-
-    const lowerPath = anchor.path.toLowerCase();
-
-    if (anchor.scope === "range") {
-      if (!lowerPath.endsWith(".md")) {
-        throw new BadRequestException("Range feedback requires a Mirror");
-      }
-      const blob = await this.source.fetchBlob(slug, headSha, anchor.path);
-      const lines = addressableHeadLines(blob.bytes.toString("utf8"));
-      if (anchor.endLine > lines.length) {
-        throw new BadRequestException("Mirror range is outside the PR head");
-      }
-      const addressed = lines
-        .slice(anchor.startLine - 1, anchor.endLine)
-        .join("\n");
-      if (addressed !== anchor.quote) {
-        throw new BadRequestException(
-          "Mirror quote must match the addressed head lines exactly",
-        );
-      }
-      return;
-    }
-
-    if (anchor.scope === "rendered") {
-      // The wire contract already bound `format` to `path` (a Mirror `.md`, an HTML
-      // `.html`/`.htm`, or a Canonical `.docx`), so a mismatched selector/path never
-      // reaches here. A deleted document has no head to reproduce a review-text from, so
-      // it can never address a rendered quote.
-      const changedFile = changedFiles.find(
-        (file) => file.path === anchor.path,
-      );
-      if (changedFile?.status === "removed") {
-        throw new BadRequestException(
-          "Rendered-text feedback requires a live document head",
-        );
-      }
-      const blob = await this.source.fetchBlob(slug, headSha, anchor.path);
-      const reviewText = await reproduceRenderedReviewText(
-        anchor.format,
-        blob.bytes,
-      );
-      if (anchor.end > reviewText.length) {
-        throw new BadRequestException(
-          "Rendered-text range is outside the PR head",
-        );
-      }
-      // Position hints are hints only: the quote and its immediate prefix/suffix
-      // context must appear at them in the authoritative review-text, or the anchor
-      // is rejected (a hint never overrides a selector mismatch).
-      if (reviewText.slice(anchor.start, anchor.end) !== anchor.quote) {
-        throw new BadRequestException(
-          "Rendered-text quote must match the reproduced head exactly",
-        );
-      }
-      // Prefix/suffix are decision-bearing, decided by the shared matching core
-      // (`@doc-review/shared` `contextAgreesAt`) at the stored position hint: an EMPTY prefix
-      // is a claim that the span starts the document, not a wildcard that matches any
-      // mid-document position, and an empty suffix a claim that it ends the document; a
-      // non-empty side must sit exactly around the span. This keeps a stale/forged empty
-      // context from vouching for a mid-document span, and shares one implementation with
-      // the reattachment seam and the client paint gate so the three cannot disagree.
-      if (
-        !contextAgreesAt(
-          reviewText,
-          { start: anchor.start, end: anchor.end },
-          { prefix: anchor.prefix, suffix: anchor.suffix },
-        )
-      ) {
-        throw new BadRequestException(
-          "Rendered-text context must match the reproduced head exactly",
-        );
-      }
-      return;
-    }
-
-    if (anchor.scope === "line") {
-      if (!/\.html?$/.test(lowerPath)) {
-        throw new BadRequestException("Line feedback requires HTML source");
-      }
-      const blob = await this.source.fetchBlob(slug, headSha, anchor.path);
-      const addressed = addressableHeadLines(blob.bytes.toString("utf8"))[
-        anchor.line - 1
-      ];
-      if (addressed !== anchor.quote) {
-        throw new BadRequestException(
-          "HTML quote must match the addressed head line exactly",
-        );
-      }
-      return;
-    }
-
-    if ("locator" in anchor) {
-      if (!lowerPath.endsWith(".docx")) {
-        throw new BadRequestException(
-          "Section-plus-quote feedback requires a Canonical",
-        );
-      }
-      return;
-    }
-
-    if (!lowerPath.endsWith(".pdf")) {
-      throw new BadRequestException(
-        "File feedback without a locator requires PDF",
-      );
-    }
+    return validateFeedbackAnchor(anchor, changedFiles, (path) =>
+      this.source.fetchBlob(slug, headSha, path).then((blob) => blob.bytes),
+    );
   }
 
   // Streams a changed file's raw HEAD bytes for the blob-serving route. Read-only:
