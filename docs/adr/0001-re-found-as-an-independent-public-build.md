@@ -1,6 +1,6 @@
 # 0001 - Re-found document-PR review as an independent public build
 
-Status: accepted (2026-07-17)
+Status: accepted (2026-07-17), amended by [ADR 0002](./0002-port-the-predecessor-working-tree.md)
 
 ## Context
 
