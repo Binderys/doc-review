@@ -2370,10 +2370,13 @@ describe("exact-head round transitions", () => {
 // arms - and, critically, the ORDER of the locator-less file gate versus the
 // removed-status gate - are structurally independent, so they are pinned here by driving
 // the real predicate through the public reconcile surface (a mechanism the repo already
-// uses for carry-forward drift). The rendered-reattach, locator-inclusion, and
-// bare-file present/absent decisions are already pinned by the "exact-head round
-// transitions" matrix above; this block adds the untested removed-status gate and its
-// ordering, so a change to that gate's logic or position fails a test.
+// uses for carry-forward drift). The rendered-reattach and bare-file present/absent
+// decisions are pinned by the "exact-head round transitions" matrix above; the
+// locator-inclusion arm (`section` AND `quote` must both survive) is pinned by the
+// section-present/quote-missing and section-missing/quote-present cases below - the
+// matrix's single negative case drops BOTH, so it cannot tell `||` from `&&`; and the
+// removed-status gate and its ordering versus the locator-less file gate are pinned by the
+// removed cases here. A change to any of these gates' logic or position fails a test.
 describe("reconcileAnchor removed-status gate and ordering (#3 drift-pin)", () => {
   let app: INestApplication | undefined;
 
@@ -2543,6 +2546,78 @@ describe("reconcileAnchor removed-status gate and ordering (#3 drift-pin)", () =
       headSha: secondHeadSha,
       carriedForward: true,
       drifted: false,
+    });
+  });
+
+  // Creates the Canonical locator anchor on the live first head (validation only gates the
+  // `.docx` path, so it persists), then advances to a second head where the Canonical stays
+  // `modified` (live) but its body reproduces `canonicalBody`, and reconciles. Drift here is
+  // decided solely by the locator-inclusion arm: BOTH the stored `section` and `quote` must
+  // survive in the head's raw text, so dropping either one drifts. `buildMinimalDocx`'s body
+  // is the exact mammoth raw text, so each case controls one side of that check.
+  const carryLocatorThenReplaceCanonical = async (
+    fake: FakeGitHubSource,
+    canonicalBody: string,
+  ) => {
+    const created = await request(app!.getHttpServer())
+      .post(`${route}/comments`)
+      .send(locatorAnchor)
+      .expect(201);
+    const id = reviewCommentSchema.parse(
+      (created.body as { data: unknown }).data,
+    ).id;
+
+    fake.setPullRequest(slug, reviewLoopMetadata(secondHeadSha));
+    fake.setChangedFiles(slug, fixture.number, [
+      { path: fixture.mirrorPath, status: "modified" },
+      { path: fixture.htmlPath, status: "modified" },
+      { path: fixture.canonicalPath, status: "modified" },
+      { path: fixture.pdfPath, status: "modified" },
+    ]);
+    fake.setBlob(slug, secondHeadSha, {
+      path: fixture.canonicalPath,
+      ref: secondHeadSha,
+      bytes: buildMinimalDocx(canonicalBody),
+    });
+
+    const round = await reconcile();
+    return round.comments.find((entry) => entry.id === id);
+  };
+
+  // The locator arm is a disjunction (`!includes(section) || !includes(quote)`): each case
+  // keeps ONE half present and drops the OTHER, so it drifts only under `||`. Under a
+  // `||`->`&&` mutation the surviving half would vote not-drifted and the case fails - which
+  // the both-dropped matrix case cannot detect. `section` is "Recommendation"; `quote` is
+  // "Exact nearby canonical Quasartext.".
+  it("drifts a live Canonical locator anchor when the section survives but the quote is gone", async () => {
+    const fake = stageReviewLoop();
+    app = await buildApp(fake);
+
+    const carried = await carryLocatorThenReplaceCanonical(
+      fake,
+      "Recommendation. A wholly different body sentence.",
+    );
+
+    expect(carried).toMatchObject({
+      headSha: secondHeadSha,
+      carriedForward: true,
+      drifted: true,
+    });
+  });
+
+  it("drifts a live Canonical locator anchor when the quote survives but the section is gone", async () => {
+    const fake = stageReviewLoop();
+    app = await buildApp(fake);
+
+    const carried = await carryLocatorThenReplaceCanonical(
+      fake,
+      "Preamble. Exact nearby canonical Quasartext.",
+    );
+
+    expect(carried).toMatchObject({
+      headSha: secondHeadSha,
+      carriedForward: true,
+      drifted: true,
     });
   });
 });
