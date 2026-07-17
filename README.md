@@ -14,10 +14,26 @@ deliberately as a code PR.
 
 ## Status
 
-In progress, spec-first: the repo opens with its decisions, and the code follows in
-public. Doc Review re-founds a design begun in my personal projects - picked up
-mid-flight, which is why the public version line opens at **0.3.0** rather than 0.1.0.
-Tags land as the build does.
+In progress. The repo opened spec-first; the predecessor build's working tree has since
+landed as this line's 0.3.0 opening state (see
+[ADR 0002](docs/adr/0002-port-the-predecessor-working-tree.md)) - which is also why the
+public version line opens at **0.3.0** rather than 0.1.0: there was a 0.1 and a 0.2 on
+the private side. Tags land as the build does.
+
+## Development
+
+A pnpm + Turbo monorepo (Node and pnpm floors are declared in the root `package.json`):
+
+- `apps/client` - React + Vite review surface.
+- `apps/server` - NestJS API: PR reads, document rendering, review-round state.
+- `packages/shared` - shared constants, utils, types.
+- `packages/api-contracts` - API schemas, DTOs, contract types.
+
+```bash
+pnpm install
+pnpm dev            # all workspaces
+pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build
+```
 
 ## How this repo works
 
