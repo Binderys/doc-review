@@ -79,7 +79,9 @@ function WorkstationIdentity() {
         <span>binderys</span>
       </a>
       <span className="shell-prototype__folio">folio 01</span>
-      <span className="shell-prototype__product">Doc Review</span>
+      <span className="shell-prototype__product">
+        Doc Review / Prototype No. 1
+      </span>
     </div>
   );
 }
@@ -525,7 +527,7 @@ function PrototypeNavigator({
         ←
       </button>
       <span aria-live="polite">
-        <b>{active.key}</b> - {active.name}
+        No. 1 / <b>{active.key}</b> - {active.name}
       </span>
       <button
         type="button"
@@ -561,6 +563,17 @@ export function ReviewShellPrototype() {
       : "ink";
   });
   const [activePath, setActivePath] = useState(DOCUMENTS[0].path);
+
+  useEffect(() => {
+    const previousTitle = document.title;
+    const active =
+      SHELL_VARIANTS.find((variant) => variant.key === current) ??
+      SHELL_VARIANTS[0];
+    document.title = `Prototype No. 1 - ${active.name}`;
+    return () => {
+      document.title = previousTitle;
+    };
+  }, [current]);
 
   const cycle = (direction: -1 | 1): void => {
     const index = SHELL_VARIANTS.findIndex(

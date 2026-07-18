@@ -1,5 +1,8 @@
 # Review shell prototype
 
+Review label: **Prototype No. 1 - Ledger rail**. The other two internal variants remain
+available as supporting explorations on this prototype branch.
+
 Question: how should the inherited Doc Review client become a high-density Binderys
 review workstation without changing routes, contracts, lifecycle, product behaviour,
 or the appearance of authored documents?
