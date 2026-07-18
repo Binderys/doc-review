@@ -1,5 +1,8 @@
 # Editorial shell prototype (throwaway)
 
+Review label: **Prototype No. 2 - alternate editorial shell**. All three internal shell
+variants remain available for comparison.
+
 **This is a disposable UI prototype, not production code.** It answers one design
 question and is meant to be deleted (or have its winning shell folded into the real
 client) once that question is settled. It never ships: `shell-prototype.html` is not a

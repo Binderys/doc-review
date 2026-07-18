@@ -59,7 +59,7 @@ export function ShellBar({
         {"‹"}
       </button>
       <span className="es-bar__label" aria-live="polite">
-        {active.key} - {active.name}
+        No. 2 / {active.key} - {active.name}
         <small>?variant={active.key}</small>
       </span>
       <button type="button" aria-label="Next shell" onClick={() => step(1)}>

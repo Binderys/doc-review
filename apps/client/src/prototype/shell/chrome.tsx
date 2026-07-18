@@ -95,7 +95,7 @@ export function Masthead({
       </span>
       <span className="es-sibling">
         <span className="es-folio">folio 01</span>
-        <span className="es-sibling__name">Doc Review</span>
+        <span className="es-sibling__name">Doc Review / Prototype No. 2</span>
       </span>
       <span className="es-masthead__spacer" />
       <ThemeControl theme={theme} onThemeChange={onThemeChange} />
