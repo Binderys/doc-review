@@ -5,16 +5,21 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 run_id="$(date +%s)-$$"
 project_name="doc-review-smoke-${run_id}"
-image_tag="smoke-${run_id}"
-image_name="doc-review:${image_tag}"
+image_repository="doc-review-smoke-${run_id}"
+image_tag="$(git -C "${repo_root}" rev-parse HEAD)"
+image_name="${image_repository}:${image_tag}"
+latest_image_name="${image_repository}:latest"
 
 export DOC_REVIEW_HOST_PORT=0
+export DOC_REVIEW_IMAGE_REPOSITORY="${image_repository}"
 export DOC_REVIEW_IMAGE_TAG="${image_tag}"
 
 fail() {
   echo "Compose smoke failed: $*" >&2
   exit 1
 }
+
+[[ "${image_tag}" =~ ^[0-9a-f]{40}$ ]] || fail "source image tag is not a full Git SHA: ${image_tag}"
 
 wait_for_healthy() {
   local container_id=$1
@@ -45,6 +50,10 @@ if docker image inspect "${image_name}" >/dev/null 2>&1; then
   fail "smoke image already exists: ${image_name}"
 fi
 
+if docker image inspect "${latest_image_name}" >/dev/null 2>&1; then
+  fail "smoke image already exists: ${latest_image_name}"
+fi
+
 smoke_dir="$(mktemp -d "${TMPDIR:-/tmp}/doc-review-compose-smoke.XXXXXX")"
 runtime_env="${smoke_dir}/runtime.env"
 cleanup_temp() {
@@ -73,7 +82,7 @@ cleanup() {
   local exit_code=$?
   trap - EXIT INT TERM
   compose down --volumes --remove-orphans >/dev/null 2>&1 || true
-  docker image rm "${image_name}" >/dev/null 2>&1 || true
+  docker image rm "${image_name}" "${latest_image_name}" >/dev/null 2>&1 || true
   rm -rf "${smoke_dir}"
   exit "${exit_code}"
 }
@@ -85,12 +94,31 @@ service_count="$(compose config --services | wc -l | tr -d ' ')"
 volume_count="$(compose config --volumes | wc -l | tr -d ' ')"
 [[ "${volume_count}" == "1" ]] || fail "expected one Compose volume, found ${volume_count}"
 
-compose up --detach --build
+configured_image="$(compose config --images)"
+[[ "${configured_image}" == "${image_name}" ]] || fail "configured image is ${configured_image}, expected ${image_name}"
+
+build_definition="$(compose build --print)"
+node -e '
+  const assert = require("node:assert/strict");
+  const definition = JSON.parse(process.argv[1]);
+  const expectedTags = process.argv.slice(2).sort();
+  const actualTags = definition.target["doc-review"].tags.toSorted();
+  assert.deepEqual(actualTags, expectedTags);
+' "${build_definition}" "${image_name}" "${latest_image_name}"
+
+compose up --detach --build --force-recreate --pull never --wait --wait-timeout 180
 
 container_id="$(compose ps --quiet doc-review)"
 [[ -n "${container_id}" ]] || fail "Compose did not create the doc-review container"
 
 wait_for_healthy "${container_id}"
+
+configured_container_image="$(docker inspect --format '{{.Config.Image}}' "${container_id}")"
+[[ "${configured_container_image}" == "${image_name}" ]] || fail "container image is ${configured_container_image}"
+
+source_image_id="$(docker image inspect --format '{{.Id}}' "${image_name}")"
+latest_image_id="$(docker image inspect --format '{{.Id}}' "${latest_image_name}")"
+[[ "${source_image_id}" == "${latest_image_id}" ]] || fail "source and latest tags resolve to different images"
 
 container_user="$(docker inspect --format '{{.Config.User}}' "${container_id}")"
 [[ "${container_user}" == "node" ]] || fail "runtime user is ${container_user:-unset}, expected node"

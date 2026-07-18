@@ -1,10 +1,12 @@
 services:
   doc-review:
-    image: doc-review:${DOC_REVIEW_IMAGE_TAG:-local}
+    image: ${DOC_REVIEW_IMAGE_REPOSITORY:-doc-review}:${DOC_REVIEW_IMAGE_TAG:?set DOC_REVIEW_IMAGE_TAG to a verified green source Git SHA}
     platform: linux/arm64
     build:
       context: .
       dockerfile: Dockerfile
+      tags:
+        - ${DOC_REVIEW_IMAGE_REPOSITORY:-doc-review}:latest
     env_file:
       - path: ${DOC_REVIEW_ENV_FILE:-.env}
         required: true
