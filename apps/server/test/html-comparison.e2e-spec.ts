@@ -16,6 +16,13 @@ import {
 } from "../src/modules/dashboard/github/github-source";
 import { ReviewStateStore } from "../src/modules/review/review-state.store";
 
+// Headless Chrome cold-start on a loaded CI runner routinely runs past a few
+// seconds: the first launch in a job creates the user-data profile and boots
+// --headless=new. Each browser step therefore gets a CI-tolerant budget rather
+// than the near-instant local launch time, and the per-test ceiling below sits
+// comfortably above the two sequential browser windows.
+const BROWSER_STEP_TIMEOUT_MS = 30_000;
+
 describe("authored HTML comparison browser egress", () => {
   let app: INestApplication | undefined;
   let controlServer: Server | undefined;
@@ -160,12 +167,12 @@ describe("authored HTML comparison browser egress", () => {
     await Promise.all([
       withTimeout(
         screenshotWritten(browserProcess, comparisonScreenshotPath),
-        10_000,
+        BROWSER_STEP_TIMEOUT_MS,
         "Headless Chrome did not capture the authored comparison",
       ),
       withTimeout(
         comparisonLoaded,
-        10_000,
+        BROWSER_STEP_TIMEOUT_MS,
         "Headless Chrome did not load the authored comparison",
       ),
     ]);
@@ -182,7 +189,7 @@ describe("authored HTML comparison browser egress", () => {
     );
     await withTimeout(
       screenshotWritten(browserProcess, baselineScreenshotPath),
-      10_000,
+      BROWSER_STEP_TIMEOUT_MS,
       "Headless Chrome did not capture the blank comparison baseline",
     );
     await stopProcess(browserProcess);
@@ -193,7 +200,9 @@ describe("authored HTML comparison browser egress", () => {
       readFile(baselineScreenshotPath),
     ]);
     expect(comparisonScreenshot.equals(baselineScreenshot)).toBe(false);
-  }, 30_000);
+    // Ceiling above the two sequential browser windows (comparison + baseline),
+    // each bounded by BROWSER_STEP_TIMEOUT_MS, plus app boot and setup.
+  }, 90_000);
 });
 
 function listen(server: Server): Promise<void> {
