@@ -2,10 +2,7 @@
 
 Packages are reusable workspace libraries. They should expose stable, intentional APIs to apps and other packages.
 
-Current packages:
-
-- `packages/shared`: domain-neutral constants, utilities, and TypeScript types.
-- `packages/api-contracts`: shared API schemas, DTOs, and request/response contract types.
+The packages that currently exist are inventoried in [`AGENTS.md`](../../AGENTS.md#workspace) (`## Workspace`); these conventions govern any package regardless of which exist.
 
 ## Responsibilities
 

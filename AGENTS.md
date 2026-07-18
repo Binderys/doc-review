@@ -10,7 +10,7 @@ This is a full-stack TypeScript monorepo (pnpm workspace + Turbo). Authoritative
 - `packages/shared` - shared constants, utils, types (`@doc-review/shared`).
 - `packages/api-contracts` - shared API schemas, DTOs, contract types (`@doc-review/api-contracts`).
 
-Requires Node >= 24 and pnpm 11 (`pnpm@11.8.0`). Use pnpm only; never npm or yarn.
+The pinned Node and pnpm versions are owned by the root [`package.json`](package.json) (`engines` / `packageManager`). Use pnpm only; never npm or yarn.
 
 ## Commands
 

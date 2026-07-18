@@ -82,11 +82,12 @@ The rituals, as used above:
 
 These rules are backed by a mix of live tooling and still-manual discipline.
 
-**Live today.** On a protected `main` (see `docs/agents/repo-setup.md`), the required `Quality gate` check is the deterministic backstop for the universal and TypeScript-profile rules. It fans out to three CI workers (`.github/workflows/ci.yml`):
+**Live today.** On a protected `main` (see `docs/agents/repo-setup.md`), the required `Quality gate` check is the deterministic backstop for the universal and TypeScript-profile rules. Its worker split and the exact commands each runs are owned by [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml); what makes it a gate rather than a formality is a set of properties that must hold however that file is arranged:
 
-- **verify** - `pnpm format:check`, `pnpm lint` (flags `any` and unused vars), `pnpm typecheck`, `pnpm test`, `pnpm build`.
-- **e2e** - the server boot smoke (`pnpm test:e2e`); its shape is owned by [`apps/server/test/app.e2e-spec.ts`](../../apps/server/test/app.e2e-spec.ts) per [ADR 0004](../../docs/adr/0004-authoritative-scaffold-facts.md).
-- **audit** - a gitleaks scan over the PR's commit range (`origin/main..HEAD`), so a secret added then deleted within the same PR is still caught.
+- It **re-runs the local gate** on CI, so a branch that skipped `pnpm typecheck` / `pnpm lint` / `pnpm test` locally cannot land green.
+- The server **boot smoke fails rather than skips** - its shape is owned by [`apps/server/test/app.e2e-spec.ts`](../../apps/server/test/app.e2e-spec.ts) per [ADR 0004](../../docs/adr/0004-authoritative-scaffold-facts.md) - so a boot regression reds the gate instead of silently passing.
+- The **secret scan covers the whole PR commit range**, so a secret added then deleted within the same PR is still caught.
+- The **aggregator reds on any worker that fails or is skipped**, so no worker can drop out and leave the gate green.
 
 `.gitignore` also blocks `.env*` from being committed at all.
 
