@@ -89,13 +89,25 @@ const changedFiles: ChangedFile[] = [
 const buildApp = async (
   fake: FakeGitHubSource,
   statePath = createTestStatePath(),
+  nodeEnv?: "production",
 ): Promise<INestApplication> => {
   process.env.REVIEW_STATE_PATH = statePath;
   testStatePaths.add(statePath);
+  const previousNodeEnv = process.env.NODE_ENV;
+  if (nodeEnv) {
+    process.env.NODE_ENV = nodeEnv;
+  }
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(GitHubSource)
     .useValue(fake)
-    .compile();
+    .compile()
+    .finally(() => {
+      if (previousNodeEnv === undefined) {
+        delete process.env.NODE_ENV;
+      } else {
+        process.env.NODE_ENV = previousNodeEnv;
+      }
+    });
 
   const app = moduleRef.createNestApplication();
   app.useGlobalPipes(new AppValidationPipe());
@@ -250,6 +262,21 @@ describe("GET /pr/:owner/:repo/:number (seam)", () => {
     expect(body.data.files.map((file) => file.path)).toEqual(
       changedFiles.map((file) => file.path),
     );
+  });
+
+  it("keeps the numeric review route JSON-owned in production API requests", async () => {
+    app = await buildApp(stagedFake(), createTestStatePath(), "production");
+    await reconcileReview(app, `/pr/${SLUG}/${NUMBER}`);
+
+    const response = await request(app.getHttpServer())
+      .get(`/pr/${SLUG}/${NUMBER}`)
+      .set("Accept", "application/json")
+      .expect(200);
+
+    expect(response.headers["content-type"]).toContain("application/json");
+    expect(
+      reviewSurfaceResponseSchema.safeParse(response.body.data).success,
+    ).toBe(true);
   });
 
   it("marks added and deleted files with the correct change type", async () => {

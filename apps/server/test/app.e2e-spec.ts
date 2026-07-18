@@ -17,8 +17,18 @@ describe("server boot smoke", () => {
   let app: INestApplication;
 
   beforeAll(async () => {
-    app = await createApp();
-    await app.init();
+    const previousNodeEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = "development";
+    try {
+      app = await createApp();
+      await app.init();
+    } finally {
+      if (previousNodeEnv === undefined) {
+        delete process.env.NODE_ENV;
+      } else {
+        process.env.NODE_ENV = previousNodeEnv;
+      }
+    }
   });
 
   afterAll(async () => {
@@ -47,7 +57,7 @@ describe("compiled server boot smoke", () => {
     server = spawn(process.execPath, [resolve(__dirname, "../dist/main.js")], {
       env: {
         ...process.env,
-        NODE_ENV: "test",
+        NODE_ENV: "production",
         PORT: "0",
       },
       stdio: ["ignore", "pipe", "pipe", "ipc"],
@@ -69,11 +79,55 @@ describe("compiled server boot smoke", () => {
     }
   });
 
-  it("boots the emitted production process and serves /health", async () => {
-    const response = await fetch(`http://127.0.0.1:${port}/health`);
+  it("serves the SPA entry point and nested review navigation", async () => {
+    const entryResponse = await fetch(`http://127.0.0.1:${port}/`, {
+      headers: { Accept: "text/html" },
+    });
+    const nestedResponse = await fetch(
+      `http://127.0.0.1:${port}/pr/acme/reports/78`,
+      { headers: { Accept: "text/html" } },
+    );
+
+    expect(entryResponse.status).toBe(200);
+    expect(entryResponse.headers.get("content-type")).toContain("text/html");
+    const entryHtml = await entryResponse.text();
+    expect(entryHtml).toContain('<div id="root"></div>');
+    const scriptPath = entryHtml.match(/<script[^>]+src="([^"]+)"/)?.[1];
+    expect(scriptPath).toBeDefined();
+    const scriptResponse = await fetch(
+      `http://127.0.0.1:${port}${scriptPath ?? ""}`,
+    );
+    expect(scriptResponse.status).toBe(200);
+    await expect(scriptResponse.text()).resolves.not.toContain(
+      "http://localhost:3000",
+    );
+    expect(nestedResponse.status).toBe(200);
+    expect(nestedResponse.headers.get("content-type")).toContain("text/html");
+    await expect(nestedResponse.text()).resolves.toContain(
+      '<div id="root"></div>',
+    );
+  });
+
+  it("keeps server routes ahead of the SPA and production independent of CORS", async () => {
+    const response = await fetch(`http://127.0.0.1:${port}/health`, {
+      headers: {
+        Accept: "text/html",
+        Origin: "http://example.com",
+      },
+    });
+    const reviewApiResponse = await fetch(
+      `http://127.0.0.1:${port}/pr/acme/reports/not-a-number`,
+      { headers: { Accept: "application/json" } },
+    );
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual(HEALTH_RESPONSE);
+    expect(response.headers.get("access-control-allow-origin")).toBeNull();
+    expect(reviewApiResponse.status).toBe(400);
+    await expect(reviewApiResponse.json()).resolves.toMatchObject({
+      success: false,
+      statusCode: 400,
+    });
   });
 });
 
