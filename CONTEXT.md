@@ -42,7 +42,8 @@ _Avoid_: preview generation, export
   2026-07-17 - see
   [ADR 0002](docs/adr/0002-port-the-predecessor-working-tree.md). The predecessor's
   commit history and tracker are not part of this repo's record.
-- **Reconciled through:** v0.6.0 - the upstream tag whose delta was last reviewed as
-  owed-work. The `upkeep` skill's upstream-delta leg resolves its baseline from this
-  line; each reviewed delta proposes pinning it forward as ordinary follow-up
-  (report-only, never writing the pin itself).
+- **Reconciled through:** v0.6.2 - the upstream tag whose delta was last reviewed as
+  owed-work (the v0.6.0..v0.6.2 delta was reviewed on 2026-07-18; ledger in issue #15).
+  The `upkeep` skill's upstream-delta leg resolves its baseline from this line; each
+  reviewed delta proposes pinning it forward as ordinary follow-up (report-only, never
+  writing the pin itself).
