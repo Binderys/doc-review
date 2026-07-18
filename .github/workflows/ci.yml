@@ -1,8 +1,12 @@
 name: CI
 
 on:
-  push:
-    branches: [main]
+  # No push:main trigger. Under this repo's PR-only main (strict up-to-date + squash
+  # merge), the tree that lands on main is byte-identical to the branch tip the Quality
+  # gate just proved, so a post-merge push run would re-prove the same tree for nothing.
+  # Dropped to match the private upstream boilerplate (tag v0.6.2).
+  # Guard: a direct-to-main fork (no PR flow) must restore a push trigger here, or CI
+  # never runs (cf. the audit job's origin/main..HEAD direct-to-main caveat below).
   pull_request:
   merge_group:
 
