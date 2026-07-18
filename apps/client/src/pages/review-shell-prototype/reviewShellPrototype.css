@@ -528,6 +528,13 @@
 }
 
 .shell-prototype__ledger-thread {
+  position: sticky;
+  top: var(--space-1);
+  align-self: start;
+  max-height: calc(100vh - var(--space-2));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
   border-left: 1px solid var(--hairline);
 }
 
@@ -841,8 +848,11 @@
   }
 
   .shell-prototype__ledger-thread {
+    position: static;
     grid-column: 1 / -1;
     grid-template-columns: minmax(180px, 0.5fr) minmax(0, 2fr) auto;
+    max-height: none;
+    overflow-y: visible;
     border-top: 1px solid var(--hairline);
     border-left: 0;
   }
