@@ -4,4 +4,5 @@ dist/
 .turbo/
 coverage/
 
-
+# Preserved local issue #9 staging files are user-owned, untracked working state
+.issue-9-*.tmp.md

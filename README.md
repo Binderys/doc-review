@@ -35,6 +35,16 @@ pnpm dev            # all workspaces
 pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build
 ```
 
+## Deployment
+
+The [Binderys-mini deployment and rollback handoff](docs/deployment.md) owns the
+operator procedure: green-SHA local builds, the persistent Compose volume, Tailscale
+HTTPS exposure, verification, rollback, and approval-gated cold-reboot testing.
+
+The operator `.env` is excluded from both Git and the deny-by-default Docker build
+context. Back it up only if the operator deliberately adopts a backup policy; Doc
+Review does not provide backup or restore behavior.
+
 ## How this repo works
 
 - Specs and PRDs live in the [issue tracker](https://github.com/Binderys/doc-review/issues);

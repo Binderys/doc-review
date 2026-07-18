@@ -1,5 +1,10 @@
 import { Module } from "@nestjs/common";
-import { ConfigModule } from "@nestjs/config";
+import { ConfigModule, ConfigService } from "@nestjs/config";
+import {
+  ServeStaticModule,
+  type ServeStaticModuleOptions,
+} from "@nestjs/serve-static";
+import { CLIENT_DIST_PATH } from "./config/client-assets";
 import { env } from "./config/env";
 import { envFilePath } from "./config/env-file-path";
 import { validationSchema } from "./config/validation";
@@ -14,6 +19,14 @@ import { ReviewModule } from "./modules/review/review.module";
       envFilePath,
       load: [env],
       validationSchema,
+    }),
+    ServeStaticModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService): ServeStaticModuleOptions[] =>
+        configService.get<string>("nodeEnv") === "production"
+          ? [{ rootPath: CLIENT_DIST_PATH, renderPath: "/" }]
+          : [],
     }),
     HealthModule,
     DashboardModule,

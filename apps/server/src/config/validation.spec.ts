@@ -20,4 +20,32 @@ describe("validationSchema", () => {
     expect(error).toBeDefined();
     expect(error?.message).toMatch(/NODE_ENV/);
   });
+
+  it.each(["GITHUB_TOKEN", "WATCHED_REPOS"])(
+    "requires %s in production",
+    (requiredVariable) => {
+      const productionEnv: Record<string, string> = {
+        NODE_ENV: "production",
+        GITHUB_TOKEN: "read-scope-token",
+        WATCHED_REPOS: "operator/real-document-repo",
+      };
+      delete productionEnv[requiredVariable];
+
+      const { error } = validate(productionEnv);
+
+      expect(error).toBeDefined();
+      expect(error?.message).toMatch(new RegExp(requiredVariable));
+    },
+  );
+
+  it("rejects a production watched-repo value with no owner/repo entries", () => {
+    const { error } = validate({
+      NODE_ENV: "production",
+      GITHUB_TOKEN: "read-scope-token",
+      WATCHED_REPOS: " , ",
+    });
+
+    expect(error).toBeDefined();
+    expect(error?.message).toMatch(/WATCHED_REPOS/);
+  });
 });

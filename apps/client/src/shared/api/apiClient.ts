@@ -60,7 +60,13 @@ export const createApiClient = ({
     init: RequestInit,
     options: RequestOptions<Schema>,
   ): Promise<z.infer<Schema>> => {
-    const response = await fetcher(resolveApiResourceUrl(path, baseUrl), init);
+    const response = await fetcher(resolveApiResourceUrl(path, baseUrl), {
+      ...init,
+      headers: {
+        Accept: "application/json",
+        ...init.headers,
+      },
+    });
     const body = await readJsonBody(response);
 
     if (!response.ok) {
