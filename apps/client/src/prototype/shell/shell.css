@@ -1,0 +1,918 @@
+/*
+  Editorial shell prototype - throwaway styling for the Doc Review application chrome.
+  Every token below is lifted verbatim from the canonical binderys DESIGN.md (grounds,
+  signature trio, thread pair, seam geometry, phi spacing). The prototype translates
+  that studio identity into application chrome; it does not restyle by taste. Class
+  names are namespaced `es-` (editorial shell) so nothing here can collide with the
+  production App.css this file deliberately does not load.
+*/
+
+:root {
+  /* Golden ratio is the source of truth; the spacing steps are computed, never rounded
+     (DESIGN "Layout scale"). Base step is 16px. */
+  --phi: 1.618;
+  --space-0: 16px;
+  --space-n1: calc(var(--space-0) / var(--phi));
+  --space-n2: calc(var(--space-0) / var(--phi) / var(--phi));
+  --space-1: calc(var(--space-0) * var(--phi));
+  --space-2: calc(var(--space-1) * var(--phi));
+  --space-3: calc(var(--space-2) * var(--phi));
+  --space-4: calc(var(--space-3) * var(--phi));
+  --space-5: calc(var(--space-4) * var(--phi));
+
+  /* Reading measure answers to reading, not to phi; media opens to phi times measure. */
+  --measure: 62ch;
+  --container: calc(var(--measure) * var(--phi));
+
+  /* The seam rhythm: dash-to-gap 2.5:1, a site-wide dashed-rule motif. */
+  --seam-dasharray: 7.5 3;
+
+  /* Type roles (DESIGN "Type"): a sans carries display and reading, a mono carries
+     machine truth. The canonical faces are named first; the prototype vendors no font,
+     so it falls back to the platform stack rather than adding an asset dependency. */
+  --font-sans:
+    "Wanted Sans Variable", ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono:
+    "D2Coding", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    monospace;
+
+  color-scheme: dark;
+}
+
+/* Grounds and their verified derived neutrals. Primary body text is a ground on its
+   inverse ground and clears AA by a wide margin. */
+:root[data-shell-theme="paper"] {
+  --ground: #edeef0;
+  --surface: #f7f7f8;
+  --text: #111319;
+  --muted: #6b6862;
+  --hairline: #d5d5d4;
+  --signature-accent: #c4524a;
+  --signature-text: #7c2d2d;
+  --thread: #7d6a5a;
+  color-scheme: light;
+}
+
+:root[data-shell-theme="ink"] {
+  --ground: #111319;
+  --surface: #16181e;
+  --text: #edeef0;
+  --muted: #898b93;
+  --hairline: #25272d;
+  --signature-accent: #c4524a;
+  --signature-text: #cb625c;
+  --thread: #bda58f;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+}
+
+body {
+  background: var(--ground);
+  color: var(--text);
+  font-family: var(--font-sans);
+  /* Prose weight 450 (DESIGN "Type"). */
+  font-weight: 450;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+/* Visible focus everywhere: one strong ring, never removed. */
+:where(a, button, [tabindex], input, textarea, summary):focus-visible {
+  outline: 3px solid var(--signature-accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* ---- outer frame ------------------------------------------------------------ */
+
+.es-shell {
+  min-height: 100vh;
+  padding: var(--space-2) clamp(var(--space-0), 3vw, var(--space-1))
+    var(--space-5);
+}
+
+.es-frame {
+  width: min(var(--container), 100%);
+  margin: 0 auto;
+}
+
+/* Wide frame that carries a rail plus the media column (DESIGN "Layout scale"). */
+.es-frame--wide {
+  width: min(calc(var(--container) + var(--space-5) + var(--space-3)), 100%);
+}
+
+/* ---- masthead line + lockup ------------------------------------------------- */
+
+.es-masthead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  padding-bottom: var(--space-0);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.es-lockup {
+  display: inline-flex;
+  align-items: center;
+  /* Gap is 0.3x the 20px mark. */
+  gap: 6px;
+}
+
+.es-mark {
+  display: block;
+  width: 20px;
+  height: 20px;
+  /* Optical centering on the wordmark cap band. */
+  transform: translateY(-0.1em);
+  color: var(--text);
+}
+
+.es-wordmark {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.058em;
+  color: var(--text);
+}
+
+/* The sibling identity shares the masthead line but stays outside the lockup, separated
+   by one --space-1 (DESIGN "Lockup"). The folio number wears the signature; the app
+   name is quiet. */
+.es-sibling {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-n1);
+}
+
+.es-folio {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--signature-text);
+}
+
+.es-sibling__name {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.es-masthead__spacer {
+  flex: 1 1 var(--space-2);
+}
+
+/* ---- theme control (state, never identity) --------------------------------- */
+
+.es-theme {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: var(--surface);
+}
+
+.es-theme button {
+  min-height: 34px;
+  padding: 4px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.es-theme button[aria-pressed="true"] {
+  background: var(--ground);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+
+/* ---- binding record (how the review is held together) ---------------------- */
+
+.es-binding {
+  --seam-color: var(--thread);
+  padding: var(--space-0) 0;
+  border-top: 2px dashed var(--seam-color);
+  border-bottom: 2px dashed var(--seam-color);
+}
+
+.es-binding__label {
+  margin: 0 0 var(--space-n1);
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.es-binding__rows {
+  display: grid;
+  gap: var(--space-n1) var(--space-1);
+  margin: 0;
+}
+
+.es-binding--inline .es-binding__rows {
+  grid-auto-flow: column;
+  grid-auto-columns: max-content;
+  align-items: baseline;
+}
+
+.es-binding__rows > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.es-binding dt {
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.es-binding dd {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.es-binding dd.es-mono {
+  font-family: var(--font-mono);
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+
+/* ---- state chips: label + glyph, never colour alone ------------------------ */
+
+.es-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.es-chip__glyph {
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+/* The change type is carried by a glyph AND a word; the border weight is a second
+   non-colour cue (added = solid, modified = solid thin, deleted = dashed). */
+.es-chip--added {
+  border-width: 2px;
+  border-color: var(--text);
+}
+
+.es-chip--modified {
+  border-style: solid;
+}
+
+.es-chip--deleted {
+  border-style: dashed;
+  border-color: var(--muted);
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.es-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.es-status__glyph {
+  display: inline-block;
+  min-width: 1.1em;
+  text-align: center;
+}
+
+.es-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.es-flag--drifted {
+  border-style: dashed;
+  border-color: var(--signature-accent);
+}
+
+/* ---- document index (each variant frames it differently) ------------------- */
+
+.es-doc {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 3px 10px;
+  width: 100%;
+  padding: var(--space-n1) var(--space-0);
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.es-doc:hover {
+  border-color: var(--muted);
+}
+
+.es-doc[aria-current="true"] {
+  border-color: var(--signature-text);
+  box-shadow: inset 3px 0 var(--signature-text);
+}
+
+.es-doc__num {
+  grid-row: 1 / 4;
+  align-self: center;
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--signature-text);
+}
+
+.es-doc__role {
+  color: var(--muted);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.es-doc__name {
+  font-size: 0.86rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.es-doc__change {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.es-empty {
+  margin: 0;
+  padding: var(--space-0);
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* ---- agent summary --------------------------------------------------------- */
+
+.es-summary__eyebrow {
+  margin: 0 0 var(--space-n2);
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.es-summary h2 {
+  margin: 0 0 var(--space-n1);
+  font-size: 1.1rem;
+  font-weight: 650;
+}
+
+.es-summary ul {
+  margin: 0;
+  padding-left: 1.1em;
+  color: var(--text);
+  line-height: 1.6;
+}
+
+.es-summary li + li {
+  margin-top: var(--space-n2);
+}
+
+.es-summary__source {
+  margin: var(--space-0) 0 0;
+  color: var(--muted);
+  font-size: 0.68rem;
+  line-height: 1.5;
+}
+
+/* ---- reading pane (the authored document; constant across variants) --------- */
+
+.es-reading__eyebrow {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.es-reading__title {
+  margin: var(--space-n1) 0 var(--space-0);
+  font-size: clamp(1.6rem, 3vw, 2.4rem);
+  font-weight: 650;
+  line-height: 1.1;
+}
+
+.es-reading__title .es-num {
+  font-family: var(--font-mono);
+  color: var(--signature-text);
+}
+
+.es-reading__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-bottom: var(--space-1);
+}
+
+.es-reading__links a {
+  color: var(--signature-text);
+  font-weight: 600;
+  text-underline-offset: 3px;
+}
+
+.es-doc-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-n1) var(--space-0);
+  padding-bottom: var(--space-n1);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.es-doc-head__path {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+/* Prose sits at reading measure; the rendered document keeps the authored look. */
+.es-prose {
+  max-width: var(--measure);
+  margin-top: var(--space-0);
+  line-height: 1.7;
+}
+
+.es-prose :first-child {
+  margin-top: 0;
+}
+
+.es-prose h1,
+.es-prose h2,
+.es-prose h3 {
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.es-prose :lang(ko) {
+  word-break: keep-all;
+}
+
+/* Wide media (the source diff) opens toward the phi container while prose stays at
+   measure - the one place phi governs page-scale layout. */
+.es-source {
+  margin-top: var(--space-1);
+}
+
+.es-source > summary {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.es-source__frame {
+  width: min(var(--container), 100%);
+  margin-top: var(--space-n1);
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  overflow-x: auto;
+  background: var(--surface);
+}
+
+.es-diff {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.es-diff td {
+  padding: 1px 8px;
+  vertical-align: top;
+}
+
+.es-diff__num {
+  color: var(--muted);
+  text-align: right;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.es-diff__marker {
+  width: 1.4em;
+  text-align: center;
+  color: var(--muted);
+  user-select: none;
+}
+
+.es-diff__text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Added / removed lines carry the +/- marker (a non-colour cue) plus a border weight;
+   the tints stay inside the neutral system rather than encoding state by colour. */
+.es-diff__row--added {
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+  box-shadow: inset 3px 0 var(--text);
+}
+
+.es-diff__row--removed {
+  background: color-mix(in srgb, var(--muted) 9%, transparent);
+  box-shadow: inset 3px 0 var(--muted);
+}
+
+.es-diff__row--removed .es-diff__text {
+  text-decoration: line-through;
+  text-decoration-color: var(--muted);
+}
+
+.es-worddiff {
+  margin-top: var(--space-n1);
+  padding: var(--space-n1) var(--space-0);
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  line-height: 1.7;
+}
+
+.es-worddiff ins {
+  text-decoration: none;
+  box-shadow: inset 0 -0.55em 0 color-mix(in srgb, var(--text) 12%, transparent);
+}
+
+.es-worddiff del {
+  color: var(--muted);
+}
+
+/* ---- retained feedback ------------------------------------------------------ */
+
+.es-feedback {
+  margin-top: var(--space-1);
+  padding-top: var(--space-1);
+  border-top: 1px solid var(--hairline);
+}
+
+.es-round {
+  margin-top: var(--space-0);
+  padding: var(--space-0);
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.es-round h3 {
+  margin: 0 0 var(--space-n1);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.es-comment {
+  padding: var(--space-n1) 0;
+  border-top: 1px dashed var(--hairline);
+}
+
+.es-comment:first-of-type {
+  border-top: 0;
+}
+
+.es-comment__anchor {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.es-comment__body {
+  margin: 4px 0 6px;
+  line-height: 1.55;
+}
+
+.es-comment__flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+/* ---- state roles: loading / empty / error ---------------------------------- */
+
+.es-states {
+  display: grid;
+  gap: var(--space-n1);
+}
+
+.es-state {
+  padding: var(--space-n1) var(--space-0);
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.es-state__label {
+  margin: 0 0 4px;
+  color: var(--muted);
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.es-state__body {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.es-state--error {
+  border-width: 2px;
+  border-style: double;
+  border-color: var(--signature-accent);
+}
+
+.es-state__glyph {
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+.es-skeleton {
+  display: block;
+  height: 0.8em;
+  border-radius: 3px;
+  background: linear-gradient(
+    90deg,
+    var(--hairline),
+    color-mix(in srgb, var(--hairline) 40%, var(--surface))
+  );
+}
+
+/* ---- section heads --------------------------------------------------------- */
+
+.es-section-label {
+  margin: 0 0 var(--space-n1);
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* =====================================================================
+   Variant A - Codex spine: a persistent left binding rail, reading right.
+   ===================================================================== */
+
+.es-a {
+  container-type: inline-size;
+}
+
+.es-a__body {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+
+.es-a__spine {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.es-a__index {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-n1);
+}
+
+@container (min-width: 60rem) {
+  .es-a__body {
+    grid-template-columns: minmax(15rem, 20rem) minmax(0, 1fr);
+    gap: var(--space-3);
+  }
+
+  .es-a__spine {
+    position: sticky;
+    top: var(--space-0);
+    align-self: start;
+    /* The sewn edge: a dashed thread rule down the spine's reading side. */
+    padding-right: var(--space-1);
+    border-right: 2px dashed var(--thread);
+  }
+}
+
+/* =====================================================================
+   Variant B - Masthead ledger: one centred column, a thin record band,
+   a horizontal folio index, the document beneath.
+   ===================================================================== */
+
+.es-b {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+
+.es-b__reading {
+  width: 100%;
+  max-width: var(--container);
+  margin: 0 auto;
+}
+
+.es-b__index {
+  display: flex;
+  gap: var(--space-n1);
+  overflow-x: auto;
+  padding-bottom: var(--space-n2);
+  scrollbar-width: thin;
+}
+
+.es-b__index li {
+  flex: 0 0 15rem;
+  list-style: none;
+}
+
+.es-b__index ol {
+  display: contents;
+}
+
+/* =====================================================================
+   Variant C - Split quire: the document canvas and its apparatus as two
+   facing pages of an open section.
+   ===================================================================== */
+
+.es-c {
+  container-type: inline-size;
+}
+
+.es-c__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-n1);
+  margin: var(--space-1) 0;
+  padding-bottom: var(--space-n1);
+  border-bottom: 2px dashed var(--thread);
+}
+
+.es-c__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.es-c__tab-num {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--signature-text);
+}
+
+.es-c__tab[aria-current="true"] {
+  border-color: var(--signature-text);
+  box-shadow: inset 0 -2px var(--signature-text);
+}
+
+.es-c__desk {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.es-c__apparatus {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+@container (min-width: 62rem) {
+  .es-c__desk {
+    /* The document takes the golden share; the apparatus takes the rest. */
+    grid-template-columns: minmax(0, 1.618fr) minmax(18rem, 1fr);
+    gap: var(--space-3);
+    align-items: start;
+  }
+
+  .es-c__apparatus {
+    position: sticky;
+    top: var(--space-0);
+  }
+}
+
+/* =====================================================================
+   Floating shell bar - prototype scaffolding, not part of the design.
+   High-contrast, fixed, obviously chrome. Hidden in production builds.
+   ===================================================================== */
+
+.es-bar {
+  position: fixed;
+  bottom: var(--space-0);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2147483000;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px;
+  border-radius: 999px;
+  /* Fixed colours independent of theme so the bar reads as scaffolding on both grounds. */
+  background: #0b0c10;
+  color: #f4f4f6;
+  box-shadow: 0 6px 24px rgb(0 0 0 / 45%);
+}
+
+.es-bar button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid #33353d;
+  border-radius: 999px;
+  background: #17181e;
+  color: #f4f4f6;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.es-bar button:hover {
+  background: #23252d;
+}
+
+.es-bar button:focus-visible {
+  outline: 3px solid #f4f4f6;
+  outline-offset: 2px;
+}
+
+.es-bar__label {
+  min-width: 14rem;
+  padding: 0 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.es-bar__label small {
+  display: block;
+  color: #a6a8b2;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 400;
+}
