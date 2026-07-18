@@ -8,7 +8,23 @@ name: Fallow
 # pending) and .fallowrc.json for the entry-point / dependency suppressions.
 
 on:
+  # Advisory checks may be path-filtered at the workflow level; a *required* check
+  # must not be (a skipped required check reports as pending and blocks the merge).
+  # Fallow is advisory (see the header) and only audits source dead-code /
+  # duplication, so a PR touching none of its analysis inputs has nothing to say.
+  # The paths below are this repo's actual Fallow inputs: the source dirs plus the
+  # layout / import-resolution / dependency files that shift its verdict, plus this
+  # workflow itself. (Mirrors the private upstream boilerplate's v0.6.2 filter;
+  # .fallowrc.json is in that list but omitted here until it exists in the tree.)
   pull_request:
+    paths:
+      - "apps/**"
+      - "packages/**"
+      - "package.json"
+      - "pnpm-workspace.yaml"
+      - "pnpm-lock.yaml"
+      - "tsconfig.base.json"
+      - ".github/workflows/fallow.yml"
 
 permissions:
   contents: read
