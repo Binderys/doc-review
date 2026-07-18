@@ -24,7 +24,7 @@ ENV NODE_ENV=production \
 
 WORKDIR /app/apps/server
 
-RUN chown node:node /app/apps/server
+RUN mkdir -p /data && chown node:node /app/apps/server /data
 
 COPY --from=build --chown=node:node /prod/server/node_modules ./node_modules
 COPY --from=build --chown=node:node /workspace/apps/server/dist ./dist

@@ -58,6 +58,8 @@ describe("compiled server boot smoke", () => {
       env: {
         ...process.env,
         NODE_ENV: "production",
+        GITHUB_TOKEN: "compiled-boot-smoke-not-a-live-token",
+        WATCHED_REPOS: "acme/compiled-boot-fixture",
         PORT: "0",
       },
       stdio: ["ignore", "pipe", "pipe", "ipc"],

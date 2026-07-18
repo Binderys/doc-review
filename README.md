@@ -35,6 +35,26 @@ pnpm dev            # all workspaces
 pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build
 ```
 
+## Deployment
+
+Compose reads one operator-owned runtime file at the gitignored root `.env`:
+
+```bash
+cp .env.example .env
+# Replace GITHUB_TOKEN with a read-scope token and WATCHED_REPOS with real repos.
+docker compose up --detach --build
+```
+
+The deployment binds the app to port 3000 in its container and publishes it only on
+the host loopback address by default. Review rounds and feedback live at
+`/data/review-state.json` in the named `review-state` volume. The whole `/data`
+directory is mounted so the store's temporary write and atomic rename stay on one
+filesystem, and `docker compose up --force-recreate` preserves the working state.
+
+The `.env` file is excluded from both Git and the deny-by-default Docker build context.
+Back it up only if the operator deliberately adopts a backup policy; Doc Review does
+not provide backup or restore behavior.
+
 ## How this repo works
 
 - Specs and PRDs live in the [issue tracker](https://github.com/Binderys/doc-review/issues);

@@ -1,3 +1,5 @@
+# Deny by default: operator environment files and local review state never enter
+# the image build context. Only the source and manifests below are admitted.
 **
 
 !package.json

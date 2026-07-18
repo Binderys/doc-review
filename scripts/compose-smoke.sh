@@ -11,13 +11,26 @@ image_name="doc-review:${image_tag}"
 export DOC_REVIEW_HOST_PORT=0
 export DOC_REVIEW_IMAGE_TAG="${image_tag}"
 
-compose() {
-  docker compose --project-directory "${repo_root}" --project-name "${project_name}" "$@"
-}
-
 fail() {
   echo "Compose smoke failed: $*" >&2
   exit 1
+}
+
+wait_for_healthy() {
+  local container_id=$1
+  local health_status=""
+  for _ in {1..60}; do
+    health_status="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}missing{{end}}' "${container_id}")"
+    if [[ "${health_status}" == "healthy" ]]; then
+      return
+    fi
+    if [[ "${health_status}" == "unhealthy" ]]; then
+      compose logs doc-review >&2
+      fail "container became unhealthy"
+    fi
+    sleep 2
+  done
+  fail "container did not become healthy"
 }
 
 # Resolve the daemon and reject any impossible resource collision before creating
@@ -32,11 +45,36 @@ if docker image inspect "${image_name}" >/dev/null 2>&1; then
   fail "smoke image already exists: ${image_name}"
 fi
 
+smoke_dir="$(mktemp -d "${TMPDIR:-/tmp}/doc-review-compose-smoke.XXXXXX")"
+runtime_env="${smoke_dir}/runtime.env"
+cleanup_temp() {
+  rm -rf "${smoke_dir}"
+}
+trap cleanup_temp EXIT INT TERM
+
+cat >"${runtime_env}" <<EOF
+DOC_REVIEW_ENV_FILE=${runtime_env}
+NODE_ENV=production
+HOST=0.0.0.0
+PORT=3000
+GITHUB_TOKEN=compose-smoke-not-a-live-token
+WATCHED_REPOS=acme/review-loop-fixture
+REVIEW_STATE_PATH=/data/review-state.json
+DOC_REVIEW_GITHUB_SOURCE=compose-smoke
+EOF
+
+export DOC_REVIEW_ENV_FILE="${runtime_env}"
+
+compose() {
+  docker compose --env-file "${runtime_env}" --project-directory "${repo_root}" --project-name "${project_name}" "$@"
+}
+
 cleanup() {
   local exit_code=$?
   trap - EXIT INT TERM
   compose down --volumes --remove-orphans >/dev/null 2>&1 || true
   docker image rm "${image_name}" >/dev/null 2>&1 || true
+  rm -rf "${smoke_dir}"
   exit "${exit_code}"
 }
 trap cleanup EXIT INT TERM
@@ -44,24 +82,15 @@ trap cleanup EXIT INT TERM
 service_count="$(compose config --services | wc -l | tr -d ' ')"
 [[ "${service_count}" == "1" ]] || fail "expected one Compose service, found ${service_count}"
 
+volume_count="$(compose config --volumes | wc -l | tr -d ' ')"
+[[ "${volume_count}" == "1" ]] || fail "expected one Compose volume, found ${volume_count}"
+
 compose up --detach --build
 
 container_id="$(compose ps --quiet doc-review)"
 [[ -n "${container_id}" ]] || fail "Compose did not create the doc-review container"
 
-health_status=""
-for _ in {1..60}; do
-  health_status="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}missing{{end}}' "${container_id}")"
-  if [[ "${health_status}" == "healthy" ]]; then
-    break
-  fi
-  if [[ "${health_status}" == "unhealthy" ]]; then
-    compose logs doc-review >&2
-    fail "container became unhealthy"
-  fi
-  sleep 2
-done
-[[ "${health_status}" == "healthy" ]] || fail "container did not become healthy"
+wait_for_healthy "${container_id}"
 
 container_user="$(docker inspect --format '{{.Config.User}}' "${container_id}")"
 [[ "${container_user}" == "node" ]] || fail "runtime user is ${container_user:-unset}, expected node"
@@ -80,6 +109,23 @@ host_port="$(docker inspect --format '{{(index (index .NetworkSettings.Ports "30
 image_architecture="$(docker image inspect --format '{{.Architecture}}' "${image_name}")"
 [[ "${image_architecture}" == "arm64" ]] || fail "image architecture is ${image_architecture}"
 
-node "${repo_root}/scripts/compose-smoke.mjs" "http://${host_ip}:${host_port}"
+volume_name="$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Name}}{{end}}{{end}}' "${container_id}")"
+[[ "${volume_name}" == "${project_name}_review-state" ]] || fail "unexpected /data volume: ${volume_name:-missing}"
+
+node "${repo_root}/scripts/compose-smoke.mjs" "http://${host_ip}:${host_port}" initial
+
+compose up --detach --no-deps --force-recreate doc-review
+
+recreated_container_id="$(compose ps --quiet doc-review)"
+[[ -n "${recreated_container_id}" ]] || fail "Compose did not recreate the doc-review container"
+[[ "${recreated_container_id}" != "${container_id}" ]] || fail "container identity did not change during recreation"
+wait_for_healthy "${recreated_container_id}"
+
+recreated_volume_name="$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Name}}{{end}}{{end}}' "${recreated_container_id}")"
+[[ "${recreated_volume_name}" == "${volume_name}" ]] || fail "recreated container mounted a different review-state volume"
+
+recreated_host_ip="$(docker inspect --format '{{(index (index .NetworkSettings.Ports "3000/tcp") 0).HostIp}}' "${recreated_container_id}")"
+recreated_host_port="$(docker inspect --format '{{(index (index .NetworkSettings.Ports "3000/tcp") 0).HostPort}}' "${recreated_container_id}")"
+node "${repo_root}/scripts/compose-smoke.mjs" "http://${recreated_host_ip}:${recreated_host_port}" retained
 
 echo "Compose smoke passed (${project_name})"

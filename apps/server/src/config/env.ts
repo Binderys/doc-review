@@ -21,9 +21,10 @@ export const env = () => ({
   // (ADR 0001: the process binds a single private interface, never all of them).
   host: process.env.HOST ?? "127.0.0.1",
   port: Number(process.env.PORT ?? 3000),
-  // Read-scope GitHub credential the GitHub source authenticates with (optional so
-  // the app still boots unauthenticated for smoke tests).
+  // Read-scope GitHub credential the GitHub source authenticates with. Development
+  // may omit it; production validation requires it explicitly.
   githubToken: process.env.GITHUB_TOKEN,
   watchedRepos: parseWatchedRepos(process.env.WATCHED_REPOS),
+  githubSource: process.env.DOC_REVIEW_GITHUB_SOURCE ?? "github",
   reviewStatePath: process.env.REVIEW_STATE_PATH ?? ".data/review-state.json",
 });

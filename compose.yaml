@@ -5,6 +5,16 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    env_file:
+      - path: ${DOC_REVIEW_ENV_FILE:-.env}
+        required: true
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3000
+      GITHUB_TOKEN: "${GITHUB_TOKEN:?set GITHUB_TOKEN in the operator runtime environment file}"
+      WATCHED_REPOS: "${WATCHED_REPOS:?set WATCHED_REPOS in the operator runtime environment file}"
+      REVIEW_STATE_PATH: /data/review-state.json
     restart: unless-stopped
     cpus: 1.0
     mem_limit: 512m
@@ -16,3 +26,8 @@ services:
         host_ip: 127.0.0.1
         protocol: tcp
         app_protocol: http
+    volumes:
+      - review-state:/data
+
+volumes:
+  review-state:
