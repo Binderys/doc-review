@@ -1,4 +1,5 @@
 import { HomePage } from "../pages/HomePage";
+import { ReviewShellPrototype } from "../pages/review-shell-prototype/ReviewShellPrototype";
 import { ReviewSurfacePage } from "../pages/ReviewSurfacePage";
 
 // Path-based view selection without a router dependency: the review surface lives
@@ -9,6 +10,14 @@ function currentPath(): string {
 }
 
 export function App() {
+  const showShellPrototype =
+    import.meta.env.DEV &&
+    currentPath().startsWith("/pr/") &&
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).has("variant");
+
+  if (showShellPrototype) return <ReviewShellPrototype />;
+
   return currentPath().startsWith("/pr/") ? (
     <ReviewSurfacePage />
   ) : (
