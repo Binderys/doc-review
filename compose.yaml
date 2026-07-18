@@ -1,0 +1,18 @@
+services:
+  doc-review:
+    image: doc-review:${DOC_REVIEW_IMAGE_TAG:-local}
+    platform: linux/arm64
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    cpus: 1.0
+    mem_limit: 512m
+    pids_limit: 256
+    ports:
+      - name: http
+        target: 3000
+        published: "${DOC_REVIEW_HOST_PORT:-3000}"
+        host_ip: 127.0.0.1
+        protocol: tcp
+        app_protocol: http
