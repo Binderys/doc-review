@@ -33,13 +33,12 @@ const buildApp = async (
 ): Promise<INestApplication> => {
   const builder = Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(GitHubSource)
-    .useValue(fake);
-
-  if (watchedRepos) {
-    builder.overrideProvider(ConfigService).useValue({
-      get: (key: string) => (key === "watchedRepos" ? watchedRepos : undefined),
+    .useValue(fake)
+    .overrideProvider(ConfigService)
+    .useValue({
+      get: (key: string) =>
+        key === "watchedRepos" ? (watchedRepos ?? [DEFAULT_REPO]) : undefined,
     });
-  }
 
   const moduleRef = await builder.compile();
   const app = moduleRef.createNestApplication();
