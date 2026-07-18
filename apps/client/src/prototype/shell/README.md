@@ -51,12 +51,16 @@ Taken verbatim from `/Users/skhl/bootstrap/binderys/DESIGN.md` and `CONTEXT.md`:
 ## Run it (one command)
 
 ```bash
-pnpm --filter @doc-review/client dev
+pnpm --filter @doc-review/client exec vite --host 127.0.0.1
 ```
 
-Then open `/shell-prototype.html` on the dev server (add `?variant=A|B|C`, or use the
-floating selector / left-right arrow keys). Loopback: `http://localhost:5173/shell-prototype.html`.
-Over the tailnet (the dev server binds `0.0.0.0`): `http://<tailnet-ip>:5173/shell-prototype.html`.
+Then open `/shell-prototype.html?variant=A` on the loopback dev server (switch with
+`?variant=A|B|C`, the floating selector, or the left-right arrow keys):
+`http://127.0.0.1:5173/shell-prototype.html?variant=A`.
+
+To reach it from another device on the tailnet, keep the dev server loopback-bound and
+expose it with Tailscale Serve (`tailscale serve 5173`) rather than binding Vite to a
+public interface.
 
 ## The answer
 
