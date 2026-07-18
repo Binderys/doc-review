@@ -1,4 +1,5 @@
 import { INestApplication } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
 import { HttpExceptionFilter } from "./common/filters/http-exception.filter";
@@ -12,11 +13,15 @@ import { AppValidationPipe } from "./common/pipes/validation.pipe";
  */
 export async function createApp(): Promise<INestApplication> {
   const app = await NestFactory.create(AppModule);
+  const configService = app.get(ConfigService);
+  const nodeEnv = configService.get<string>("nodeEnv", "development");
 
-  app.enableCors({
-    origin: true,
-    credentials: true,
-  });
+  if (nodeEnv === "development") {
+    app.enableCors({
+      origin: true,
+      credentials: true,
+    });
+  }
   app.useGlobalPipes(new AppValidationPipe());
   app.useGlobalFilters(new HttpExceptionFilter());
   app.useGlobalInterceptors(new ResponseInterceptor());

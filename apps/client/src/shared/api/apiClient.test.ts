@@ -19,6 +19,17 @@ const jsonResponse = (body: unknown, status = 200): Response =>
   });
 
 describe("createApiClient", () => {
+  it("keeps server resource paths relative when the production base URL is empty", () => {
+    expect(
+      resolveApiResourceUrl(
+        "/pr/acme/reports/78/raw?path=report.html&ref=7878787878787878787878787878787878787878",
+        "",
+      ),
+    ).toBe(
+      "/pr/acme/reports/78/raw?path=report.html&ref=7878787878787878787878787878787878787878",
+    );
+  });
+
   it("resolves server resource paths against the configured API origin", () => {
     expect(
       resolveApiResourceUrl(
@@ -41,7 +52,10 @@ describe("createApiClient", () => {
     ).resolves.toEqual({ status: "ok" });
     expect(fetcher).toHaveBeenCalledWith(
       "http://api.test/health",
-      expect.objectContaining({ method: "GET" }),
+      expect.objectContaining({
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }),
     );
   });
 
@@ -110,7 +124,10 @@ describe("createApiClient", () => {
       "http://api.test/things",
       expect.objectContaining({
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({ name: "widget" }),
       }),
     );

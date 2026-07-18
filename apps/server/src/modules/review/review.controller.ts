@@ -12,6 +12,7 @@ import {
   Body,
   Controller,
   Get,
+  Headers,
   HttpCode,
   HttpStatus,
   Param,
@@ -20,8 +21,12 @@ import {
   Post,
   Query,
   Res,
+  StreamableFile,
 } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import type { Response } from "express";
+import { createReadStream } from "node:fs";
+import { CLIENT_INDEX_PATH } from "../../config/client-assets";
 import { ReviewService } from "./review.service";
 
 const AUTHORED_HTML_CSP =
@@ -32,14 +37,26 @@ const AUTHORED_HTML_CSP =
 // merged-state deletion before a merged 404. Every upstream action stays on GitHub.
 @Controller()
 export class ReviewController {
-  constructor(private readonly review: ReviewService) {}
+  constructor(
+    private readonly review: ReviewService,
+    private readonly configService: ConfigService,
+  ) {}
 
   @Get("pr/:owner/:repo/:number")
   getReviewSurface(
     @Param("owner") owner: string,
     @Param("repo") repo: string,
     @Param("number", ParseIntPipe) number: number,
-  ): Promise<ReviewSurfaceResponse> {
+    @Headers("accept") accept: string | undefined,
+  ): Promise<ReviewSurfaceResponse> | StreamableFile {
+    if (
+      this.configService.get<string>("nodeEnv") === "production" &&
+      accept?.includes("text/html")
+    ) {
+      return new StreamableFile(createReadStream(CLIENT_INDEX_PATH), {
+        type: "text/html",
+      });
+    }
     return this.review.getReviewSurface(owner, repo, number);
   }
 
