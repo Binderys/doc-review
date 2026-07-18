@@ -2,10 +2,7 @@
 
 Apps are deployable workspace projects. They compose packages, framework code, configuration, and runtime behavior into a product surface.
 
-Current apps:
-
-- `apps/client`: React and Vite frontend.
-- `apps/server`: NestJS API server.
+The apps that currently exist are inventoried in [`AGENTS.md`](../../AGENTS.md#workspace) (`## Workspace`); these conventions govern any app regardless of which exist.
 
 ## Responsibilities
 
