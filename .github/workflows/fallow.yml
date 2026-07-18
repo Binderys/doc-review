@@ -46,9 +46,9 @@ jobs:
           fetch-depth: 0
 
       - name: Fallow diff-scoped audit
-        uses: fallow-rs/fallow@e36026dfc0f00bfdf8dab889efc58ab86e5ec466 # v2.104.0
+        uses: fallow-rs/fallow@32b3f89fe28c286c85a6b0aed4ec5be120f54da6 # v3.6.0
         with:
-          version: "3.4.2"
+          version: "3.6.0"
           changed-since: origin/main
           # Truly advisory: report findings as PR annotations without failing the
           # job, so a false-positive never red-Xes a PR. Promote to a required gate
