@@ -10,7 +10,6 @@ export type ServerConfiguration = {
   nodeEnv: string;
   host: string;
   port: number;
-  githubToken: string | undefined;
   githubCredentialsByOwner: GitHubCredentialsByOwner;
   watchedRepos: string[];
   githubSource: string;
@@ -62,9 +61,6 @@ export const env = (
     // (ADR 0001: the process binds a single private interface, never all of them).
     host: environment.HOST ?? "127.0.0.1",
     port: Number(environment.PORT ?? 3000),
-    // Temporary compatibility credential for deployments that have not yet moved
-    // every watched owner to its resource-owner credential.
-    githubToken: environment.GITHUB_TOKEN,
     githubCredentialsByOwner: parseGithubCredentialsByOwner(
       watchedRepos,
       environment,

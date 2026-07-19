@@ -66,10 +66,28 @@ cp .env.example .env
 chmod 600 .env
 ```
 
-Set `GITHUB_TOKEN` to a read-scope token and `WATCHED_REPOS` to the real comma-separated
-repository list. Do not source `.env`; Compose reads it with `--env-file .env` and also
-passes it to the service. Keep `DOC_REVIEW_HOST_PORT` unset to use `3000`, because the
-persistent Serve mapping below targets that loopback port.
+Set `WATCHED_REPOS` to the real comma-separated repository list. For every distinct
+GitHub resource owner in that list, create one matching environment line named
+`GITHUB_TOKEN_<NORMALIZED_OWNER>`: uppercase the owner and replace each hyphen with an
+underscore. For example, `owner-one` becomes `GITHUB_TOKEN_OWNER_ONE`. Do not set the
+removed global `GITHUB_TOKEN`; it is not a fallback.
+
+Each line holds that resource owner's separate fine-grained PAT. Limit its repository
+access to the selected watched repositories owned by that resource owner, with only
+read-only **Contents** and read-only **Pull requests** repository permissions. Do not
+reuse one credential across owners. Production validates the complete set of distinct
+watched owners before it listens, names any uncovered owner and normalized key, and
+does not validate the credential against live GitHub during startup.
+
+Do not source `.env`; Compose reads it with `--env-file .env` and passes arbitrary
+owner-specific variables from the file to the service without enumerating owners in
+`compose.yaml`. Keep `DOC_REVIEW_HOST_PORT` unset to use `3000`, because the persistent
+Serve mapping below targets that loopback port.
+
+Credential rotation is controlled startup state, not hot reload. After approval,
+replace only the affected owner line in `.env` and run the canonical deployment command
+below so Compose recreates the container and startup validates coverage before the new
+process listens.
 
 ## Select and verify a green main SHA
 

@@ -44,10 +44,14 @@ function fakeFetch(responses: FakeFetchResult[]): {
   return { fetchFn, calls };
 }
 
-// A ConfigService stub that returns a fixed token for `githubToken`.
+// A ConfigService stub that returns a fixed resource-owner credential for the
+// default `owner/repo` fixture used below.
 function configWithToken(token: string | undefined): ConfigService {
   return {
-    get: (key: string) => (key === "githubToken" ? token : undefined),
+    get: (key: string) =>
+      key === "githubCredentialsByOwner" && token !== undefined
+        ? { owner: token }
+        : undefined,
   } as unknown as ConfigService;
 }
 
@@ -257,12 +261,40 @@ describe("GitHubApiSource", () => {
       expect(calls[0].headers.has("authorization")).toBe(false);
     });
 
-    it.each([
-      [undefined, null],
-      ["LEGACY_GLOBAL_TOKEN", "Bearer LEGACY_GLOBAL_TOKEN"],
-    ])(
+    it("does not fall through to a global or other-owner credential when the requested owner is uncovered", async () => {
+      const legacySecret = "LEGACY_SECRET_SENTINEL";
+      const otherOwnerSecret = "OTHER_OWNER_SECRET_SENTINEL";
+      const { fetchFn, calls } = fakeFetch([
+        new Response(JSON.stringify({ message: "Bad credentials" }), {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        }),
+      ]);
+      const source = new GitHubApiSource(
+        configWithOwnerCredentials(
+          { "acme-legal": otherOwnerSecret },
+          legacySecret,
+        ),
+        fetchFn,
+      );
+
+      let failure: unknown;
+      try {
+        await source.listOpenPullRequests("Binderys/board-review");
+      } catch (cause) {
+        failure = cause;
+      }
+
+      expect(failure).toBeInstanceOf(GitHubApiError);
+      expect(calls).toHaveLength(1);
+      expect(calls[0].headers.has("authorization")).toBe(false);
+      expect(String(failure)).not.toContain(legacySecret);
+      expect(String(failure)).not.toContain(otherOwnerSecret);
+    });
+
+    it.each([undefined, "LEGACY_GLOBAL_TOKEN"])(
       "does not treat an inherited record property as a resource-owner credential",
-      async (legacyToken, expectedAuthorization) => {
+      async (legacyToken) => {
         const { fetchFn, calls } = fakeFetch([
           new Response(JSON.stringify([pullItem(1)])),
         ]);
@@ -274,9 +306,7 @@ describe("GitHubApiSource", () => {
         await source.listOpenPullRequests("constructor/board-review");
 
         expect(calls).toHaveLength(1);
-        expect(calls[0].headers.get("authorization")).toBe(
-          expectedAuthorization,
-        );
+        expect(calls[0].headers.has("authorization")).toBe(false);
       },
     );
   });

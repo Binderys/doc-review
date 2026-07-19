@@ -66,8 +66,9 @@ DOC_REVIEW_ENV_FILE=${runtime_env}
 NODE_ENV=production
 HOST=0.0.0.0
 PORT=3000
-GITHUB_TOKEN=compose-smoke-not-a-live-token
-WATCHED_REPOS=acme/review-loop-fixture
+GITHUB_TOKEN_ACME=compose-smoke-acme-dummy-credential
+GITHUB_TOKEN_OPERATOR_LAB=compose-smoke-operator-lab-dummy-credential
+WATCHED_REPOS=acme/review-loop-fixture,operator-lab/archive-fixture
 REVIEW_STATE_PATH=/data/review-state.json
 DOC_REVIEW_GITHUB_SOURCE=compose-smoke
 EOF
@@ -96,6 +97,22 @@ volume_count="$(compose config --volumes | wc -l | tr -d ' ')"
 
 configured_image="$(compose config --images)"
 [[ "${configured_image}" == "${image_name}" ]] || fail "configured image is ${configured_image}, expected ${image_name}"
+
+configured_environment="$(compose config --format json)"
+node -e '
+  const assert = require("node:assert/strict");
+  const environment = JSON.parse(process.argv[1]).services["doc-review"].environment;
+  assert.equal(environment.GITHUB_TOKEN_ACME, "compose-smoke-acme-dummy-credential");
+  assert.equal(
+    environment.GITHUB_TOKEN_OPERATOR_LAB,
+    "compose-smoke-operator-lab-dummy-credential",
+  );
+  assert.equal(
+    environment.WATCHED_REPOS,
+    "acme/review-loop-fixture,operator-lab/archive-fixture",
+  );
+  assert.equal(Object.hasOwn(environment, "GITHUB_TOKEN"), false);
+' "${configured_environment}"
 
 build_definition="$(compose build --print)"
 node -e '

@@ -440,7 +440,7 @@ export class GitHubApiSource extends GitHubSource {
     if (credentials && Object.hasOwn(credentials, owner)) {
       return credentials[owner];
     }
-    return this.config.get<string>("githubToken");
+    return undefined;
   }
 
   // A single JSON resource (metadata). Follows no pagination.

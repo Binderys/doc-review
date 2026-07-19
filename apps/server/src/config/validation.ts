@@ -17,9 +17,6 @@ export const validationSchema = Joi.object({
     .default("development"),
   HOST: Joi.string().default("127.0.0.1"),
   PORT: Joi.number().default(3000),
-  // Development can use unauthenticated reads. During the resource-owner
-  // credential expansion, production may still use this compatibility token.
-  GITHUB_TOKEN: Joi.string().allow("").optional(),
   WATCHED_REPOS: Joi.when("NODE_ENV", {
     is: "production",
     then: watchedReposSchema.required(),
@@ -33,28 +30,35 @@ export const validationSchema = Joi.object({
   .custom((value: Record<string, unknown>, helpers) => {
     if (
       value.NODE_ENV !== "production" ||
-      typeof value.WATCHED_REPOS !== "string" ||
-      hasCredential(value.GITHUB_TOKEN)
+      typeof value.WATCHED_REPOS !== "string"
     ) {
       return value;
     }
 
-    const missingCredentials = [
+    const watchedOwners = [
       ...new Set(
         value.WATCHED_REPOS.split(",").map((repo) =>
-          githubCredentialEnvironmentVariable(githubResourceOwner(repo.trim())),
+          githubResourceOwner(repo.trim()),
         ),
       ),
-    ].filter((variable) => !hasCredential(value[variable]));
+    ];
+    const missingCredentials = watchedOwners
+      .map((owner) => ({
+        owner,
+        variable: githubCredentialEnvironmentVariable(owner),
+      }))
+      .filter(({ variable }) => !hasCredential(value[variable]));
 
     if (missingCredentials.length > 0) {
       return helpers.error("object.resourceOwnerCredentials", {
-        variables: missingCredentials.join(", "),
+        credentials: missingCredentials
+          .map(({ owner, variable }) => `${owner} (${variable})`)
+          .join(", "),
       });
     }
     return value;
   })
   .messages({
     "object.resourceOwnerCredentials":
-      "Resource-owner credential(s) {{#variables}} are required in production",
+      "Resource-owner credential(s) {{#credentials}} are required in production",
   });

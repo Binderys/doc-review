@@ -25,7 +25,6 @@ describe("validationSchema", () => {
   it("requires WATCHED_REPOS in production", () => {
     const { error } = validate({
       NODE_ENV: "production",
-      GITHUB_TOKEN: "read-scope-token",
     });
 
     expect(error).toBeDefined();
@@ -35,7 +34,6 @@ describe("validationSchema", () => {
   it("rejects a production watched-repo value with no owner/repo entries", () => {
     const { error } = validate({
       NODE_ENV: "production",
-      GITHUB_TOKEN: "read-scope-token",
       WATCHED_REPOS: " , ",
     });
 
@@ -48,6 +46,7 @@ describe("validationSchema", () => {
       const configuration = env({
         WATCHED_REPOS:
           "Binderys/board-review,bInDeRyS/legal-review,acme-legal/contracts",
+        GITHUB_TOKEN: "legacy-global-token",
         GITHUB_TOKEN_BINDERYS: "binderys-owner-token",
         GITHUB_TOKEN_ACME_LEGAL: "acme-owner-token",
       });
@@ -58,6 +57,7 @@ describe("validationSchema", () => {
           "acme-legal": "acme-owner-token",
         },
       });
+      expect(configuration).not.toHaveProperty("githubToken");
     });
 
     it("accepts production configuration with one owner credential for every watched owner", () => {
@@ -72,28 +72,35 @@ describe("validationSchema", () => {
       expect(error).toBeUndefined();
     });
 
-    it("temporarily accepts the legacy global token in production", () => {
+    it("rejects a legacy global credential when watched owners are uncovered", () => {
+      const legacySecret = "LEGACY_SECRET_SENTINEL";
       const { error } = validate({
         NODE_ENV: "production",
         WATCHED_REPOS: "Binderys/board-review,acme-legal/contracts",
-        GITHUB_TOKEN: "legacy-compatibility-token",
+        GITHUB_TOKEN: legacySecret,
       });
+      const message = error?.message ?? "";
 
-      expect(error).toBeUndefined();
+      expect(error).toBeDefined();
+      expect(message).toMatch(/binderys.*GITHUB_TOKEN_BINDERYS/i);
+      expect(message).toMatch(/acme-legal.*GITHUB_TOKEN_ACME_LEGAL/i);
+      expect(message).not.toContain(legacySecret);
     });
 
     it.each([
-      ["missing", undefined],
-      ["empty", ""],
+      ["a missing", undefined],
+      ["an empty", ""],
     ])(
-      "rejects a %s resource-owner credential without printing planted secrets",
+      "rejects %s resource-owner credential without printing planted secrets",
       (_case, acmeCredential) => {
         const binderysSecret = "BINDERYS_SECRET_SENTINEL";
         const legacySecret = "LEGACY_SECRET_SENTINEL";
         const productionEnv: Record<string, string> = {
           NODE_ENV: "production",
           WATCHED_REPOS: "Binderys/board-review,acme-legal/contracts",
+          GITHUB_TOKEN: legacySecret,
           GITHUB_TOKEN_BINDERYS: binderysSecret,
+          GITHUB_TOKEN_OTHER_OWNER: "OTHER_OWNER_SECRET_SENTINEL",
         };
         if (acmeCredential !== undefined) {
           productionEnv.GITHUB_TOKEN_ACME_LEGAL = acmeCredential;
@@ -103,10 +110,21 @@ describe("validationSchema", () => {
         const message = error?.message ?? "";
 
         expect(error).toBeDefined();
+        expect(message).toMatch(/acme-legal/);
         expect(message).toMatch(/GITHUB_TOKEN_ACME_LEGAL/);
         expect(message).not.toContain(binderysSecret);
         expect(message).not.toContain(legacySecret);
+        expect(message).not.toContain("OTHER_OWNER_SECRET_SENTINEL");
       },
     );
+
+    it("keeps development configuration valid without credentials", () => {
+      const { error } = validate({
+        NODE_ENV: "development",
+        WATCHED_REPOS: "public-owner/public-fixture",
+      });
+
+      expect(error).toBeUndefined();
+    });
   });
 });

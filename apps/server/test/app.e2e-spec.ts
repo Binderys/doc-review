@@ -2,6 +2,7 @@ import type { INestApplication } from "@nestjs/common";
 import { spawn, type ChildProcess } from "node:child_process";
 import { once } from "node:events";
 import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import request from "supertest";
 import { createApp } from "../src/create-app";
 
@@ -54,12 +55,29 @@ describe("compiled server boot smoke", () => {
   let port: number;
 
   beforeAll(async () => {
-    server = spawn(process.execPath, [resolve(__dirname, "../dist/main.js")], {
+    const compiledEntry = pathToFileURL(
+      resolve(__dirname, "../dist/main.js"),
+    ).href;
+    const rejectLiveGitHubFetch = `
+      const nativeFetch = globalThis.fetch;
+      globalThis.fetch = (input, init) => {
+        const target = input instanceof Request ? input.url : input;
+        if (new URL(target).origin === "https://api.github.com") {
+          throw new Error("compiled boot smoke forbids live GitHub requests");
+        }
+        return nativeFetch(input, init);
+      };
+      void import(${JSON.stringify(compiledEntry)});
+    `;
+    server = spawn(process.execPath, ["--eval", rejectLiveGitHubFetch], {
       env: {
         ...process.env,
         NODE_ENV: "production",
-        GITHUB_TOKEN: "compiled-boot-smoke-not-a-live-token",
-        WATCHED_REPOS: "acme/compiled-boot-fixture",
+        GITHUB_TOKEN_ACME: "compiled-boot-acme-dummy-credential",
+        GITHUB_TOKEN_OPERATOR_LAB:
+          "compiled-boot-operator-lab-dummy-credential",
+        WATCHED_REPOS: "acme/review-loop-fixture,operator-lab/archive-fixture",
+        DOC_REVIEW_GITHUB_SOURCE: "compose-smoke",
         PORT: "0",
       },
       stdio: ["ignore", "pipe", "pipe", "ipc"],
@@ -86,7 +104,7 @@ describe("compiled server boot smoke", () => {
       headers: { Accept: "text/html" },
     });
     const nestedResponse = await fetch(
-      `http://127.0.0.1:${port}/pr/acme/compiled-boot-fixture/78`,
+      `http://127.0.0.1:${port}/pr/acme/review-loop-fixture/78`,
       { headers: { Accept: "text/html" } },
     );
 
@@ -118,7 +136,11 @@ describe("compiled server boot smoke", () => {
       },
     });
     const reviewApiResponse = await fetch(
-      `http://127.0.0.1:${port}/pr/acme/compiled-boot-fixture/not-a-number`,
+      `http://127.0.0.1:${port}/pr/acme/review-loop-fixture/not-a-number`,
+      { headers: { Accept: "application/json" } },
+    );
+    const dashboardResponse = await fetch(
+      `http://127.0.0.1:${port}/dashboard`,
       { headers: { Accept: "application/json" } },
     );
 
@@ -130,6 +152,69 @@ describe("compiled server boot smoke", () => {
       success: false,
       statusCode: 400,
     });
+    expect(dashboardResponse.status).toBe(200);
+    await expect(dashboardResponse.json()).resolves.toMatchObject({
+      success: true,
+      data: {
+        repos: [
+          {
+            repo: "acme/review-loop-fixture",
+            pullRequests: [{ number: 38, title: "Board memo review loop" }],
+          },
+          {
+            repo: "operator-lab/archive-fixture",
+            pullRequests: [],
+          },
+        ],
+      },
+    });
+  });
+
+  it("exits before listening when a watched owner credential is missing", async () => {
+    const configuredOwnerSecret = "CONFIGURED_OWNER_SECRET_SENTINEL";
+    const legacySecret = "LEGACY_SECRET_SENTINEL";
+    const otherOwnerSecret = "OTHER_OWNER_SECRET_SENTINEL";
+    const failedServer = spawn(
+      process.execPath,
+      [resolve(__dirname, "../dist/main.js")],
+      {
+        env: {
+          ...process.env,
+          NODE_ENV: "production",
+          WATCHED_REPOS:
+            "Binderys/board-review,binderys/legal-review,acme-legal/contracts",
+          GITHUB_TOKEN_BINDERYS: configuredOwnerSecret,
+          GITHUB_TOKEN_ACME_LEGAL: "",
+          GITHUB_TOKEN: legacySecret,
+          GITHUB_TOKEN_OTHER_OWNER: otherOwnerSecret,
+          PORT: "0",
+        },
+        stdio: ["ignore", "pipe", "pipe", "ipc"],
+      },
+    );
+    let failedOutput = "";
+    let announcedReady = false;
+    failedServer.stdout?.on("data", (chunk: Buffer) => {
+      failedOutput += chunk.toString();
+    });
+    failedServer.stderr?.on("data", (chunk: Buffer) => {
+      failedOutput += chunk.toString();
+    });
+    failedServer.on("message", () => {
+      announcedReady = true;
+    });
+
+    const [exitCode] = (await once(failedServer, "exit")) as [
+      number | null,
+      NodeJS.Signals | null,
+    ];
+
+    expect(exitCode).not.toBe(0);
+    expect(announcedReady).toBe(false);
+    expect(failedOutput).toMatch(/acme-legal.*GITHUB_TOKEN_ACME_LEGAL/i);
+    expect(failedOutput).not.toContain(configuredOwnerSecret);
+    expect(failedOutput).not.toContain(legacySecret);
+    expect(failedOutput).not.toContain(otherOwnerSecret);
   });
 });
 
