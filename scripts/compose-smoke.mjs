@@ -44,13 +44,16 @@ assert.match(entryResponse.headers.get("content-type") ?? "", /text\/html/);
 const entryHtml = await entryResponse.text();
 assert.match(entryHtml, /<div id="root"><\/div>/);
 
-const nestedResponse = await fetchResponse("/pr/acme/reports/78", "text/html");
+const nestedResponse = await fetchResponse(
+  "/pr/acme/review-loop-fixture/78",
+  "text/html",
+);
 assert.equal(nestedResponse.status, 200);
 assert.match(nestedResponse.headers.get("content-type") ?? "", /text\/html/);
 assert.match(await nestedResponse.text(), /<div id="root"><\/div>/);
 
 const serverRouteResponse = await fetchResponse(
-  "/pr/acme/reports/not-a-number",
+  "/pr/acme/review-loop-fixture/not-a-number",
   "application/json",
 );
 assert.equal(serverRouteResponse.status, 400);
