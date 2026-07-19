@@ -27,8 +27,24 @@ diffed according to its format.
 _Avoid_: preview, viewer
 
 **Watched repo**:
-A repo named in the server's configuration; only watched repos appear on the dashboard.
+A repo admitted by the server's configuration. Only watched repos appear on the dashboard
+or may be read through a review surface or raw-document route.
 _Avoid_: tracked, registered
+
+**GitHub resource owner**:
+The GitHub person or organization that owns one or more watched repos and defines the
+scope within which Doc Review authenticates.
+_Avoid_: account, user
+
+**Resource-owner credential**:
+The read-only authorization Doc Review uses for watched repos belonging to one GitHub
+resource owner. A resource owner has exactly one such credential in a deployment.
+_Avoid_: global token, repo credential
+
+**Unavailable watched repo**:
+A watched repo whose current GitHub read cannot complete. It remains present on the
+dashboard without preventing available watched repos from being reviewed.
+_Avoid_: failed account, missing repo
 
 **Rendering**:
 Converting a changed file into browser-displayable form, always on the server itself -
