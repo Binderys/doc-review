@@ -1,10 +1,19 @@
-import type { DashboardResponse } from "@doc-review/api-contracts";
+import type {
+  DashboardResponse,
+  DashboardUnavailableReason,
+} from "@doc-review/api-contracts";
 
 const MINUTE = 60;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
 const MONTH = 30 * DAY;
 const YEAR = 365 * DAY;
+
+const unavailableStatusText: Record<DashboardUnavailableReason, string> = {
+  access: "Access unavailable",
+  "rate-limited": "Rate limited",
+  "github-unavailable": "GitHub unavailable",
+};
 
 // Derives a human-readable age from an ISO 8601 timestamp. Age is computed at
 // display time (not shipped by the server) so the contract stays deterministic.
@@ -38,26 +47,52 @@ export function DashboardView({ repos }: DashboardResponse) {
           className="dashboard__repo"
           key={group.repo}
           aria-labelledby={`repo-${group.repo}`}
+          aria-describedby={`repo-status-${group.repo}`}
         >
           <h2 id={`repo-${group.repo}`}>{group.repo}</h2>
-          {group.pullRequests.length === 0 ? (
-            <p className="dashboard__empty">No open pull requests.</p>
+          {group.status === "unavailable" ? (
+            <p
+              className="dashboard__status dashboard__status--unavailable"
+              id={`repo-status-${group.repo}`}
+            >
+              {unavailableStatusText[group.reason]}
+            </p>
           ) : (
-            <ul className="dashboard__prs">
-              {group.pullRequests.map((pull) => (
-                <li className="dashboard__pr" key={pull.number}>
-                  <a href={reviewHref(group.repo, pull.number)}>
-                    <span className="dashboard__pr-number">#{pull.number}</span>
-                    <span className="dashboard__pr-title">{pull.title}</span>
-                  </a>
-                  <span className="dashboard__pr-branch">{pull.branch}</span>
-                  <span className="dashboard__pr-author">{pull.author}</span>
-                  <span className="dashboard__pr-age">
-                    {formatAge(pull.createdAt)}
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <>
+              <p
+                className="dashboard__status dashboard__status--available"
+                id={`repo-status-${group.repo}`}
+              >
+                Available
+              </p>
+              {group.pullRequests.length === 0 ? (
+                <p className="dashboard__empty">No open pull requests.</p>
+              ) : (
+                <ul className="dashboard__prs">
+                  {group.pullRequests.map((pull) => (
+                    <li className="dashboard__pr" key={pull.number}>
+                      <a href={reviewHref(group.repo, pull.number)}>
+                        <span className="dashboard__pr-number">
+                          #{pull.number}
+                        </span>
+                        <span className="dashboard__pr-title">
+                          {pull.title}
+                        </span>
+                      </a>
+                      <span className="dashboard__pr-branch">
+                        {pull.branch}
+                      </span>
+                      <span className="dashboard__pr-author">
+                        {pull.author}
+                      </span>
+                      <span className="dashboard__pr-age">
+                        {formatAge(pull.createdAt)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
           )}
         </section>
       ))}

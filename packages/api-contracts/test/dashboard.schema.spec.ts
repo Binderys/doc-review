@@ -41,18 +41,82 @@ describe("pullRequestListItemSchema", () => {
 });
 
 describe("dashboardResponseSchema", () => {
-  it("accepts repos grouped with their open PRs", () => {
-    const result = dashboardResponseSchema.safeParse({
-      repos: [{ repo: "acme/board-review", pullRequests: [validItem] }],
-    });
-    expect(result.success).toBe(true);
+  it.each([
+    {
+      repo: "acme/board-review",
+      status: "available",
+      pullRequests: [validItem],
+    },
+    {
+      repo: "acme/private-review",
+      status: "unavailable",
+      reason: "access",
+    },
+    {
+      repo: "acme/rate-limited-review",
+      status: "unavailable",
+      reason: "rate-limited",
+    },
+    {
+      repo: "acme/intermittent-review",
+      status: "unavailable",
+      reason: "github-unavailable",
+    },
+  ])("accepts the valid $status/$reason arm", (repo) => {
+    expect(dashboardResponseSchema.safeParse({ repos: [repo] }).success).toBe(
+      true,
+    );
   });
 
   it("rejects a group whose PRs are not an array", () => {
     expect(
       dashboardResponseSchema.safeParse({
-        repos: [{ repo: "acme/board-review", pullRequests: validItem }],
+        repos: [
+          {
+            repo: "acme/board-review",
+            status: "available",
+            pullRequests: validItem,
+          },
+        ],
       }).success,
     ).toBe(false);
+  });
+
+  it.each([
+    {
+      repo: "acme/board-review",
+      status: "available",
+      pullRequests: [validItem],
+      reason: "access",
+    },
+    {
+      repo: "acme/private-review",
+      status: "unavailable",
+      reason: "access",
+      pullRequests: [],
+    },
+  ])("rejects mixed available and unavailable state", (repo) => {
+    expect(dashboardResponseSchema.safeParse({ repos: [repo] }).success).toBe(
+      false,
+    );
+  });
+
+  it.each([
+    {
+      repo: "acme/board-review",
+      status: "available",
+      pullRequests: [],
+      requestId: "provider-request-123",
+    },
+    {
+      repo: "acme/private-review",
+      status: "unavailable",
+      reason: "access",
+      providerMessage: "Bad credentials",
+    },
+  ])("rejects provider-specific extra state", (repo) => {
+    expect(dashboardResponseSchema.safeParse({ repos: [repo] }).success).toBe(
+      false,
+    );
   });
 });

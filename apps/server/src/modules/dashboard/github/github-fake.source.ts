@@ -6,6 +6,17 @@ import {
   type PullRequestMetadata,
 } from "./github-source";
 
+export type DeferredOpenPullRequests = {
+  started: Promise<void>;
+  resolve(pullRequests: PullRequestListItem[]): void;
+  reject(error: unknown): void;
+};
+
+type DeferredOpenPullRequestState = {
+  markStarted(): void;
+  response: Promise<PullRequestListItem[]>;
+};
+
 /**
  * In-memory GitHub source for tests: the single DI substitution seam, so tests
  * never touch the network or real confidential content. Open-PR responses are staged as an
@@ -21,6 +32,11 @@ export class FakeGitHubSource extends GitHubSource {
   private readonly pullRequests = new Map<string, PullRequestMetadata>();
   private readonly changedFiles = new Map<string, ChangedFile[]>();
   private readonly blobs = new Map<string, FileBlob>();
+  private readonly openPullRequestFailures = new Map<string, unknown>();
+  private readonly deferredOpenPullRequests = new Map<
+    string,
+    DeferredOpenPullRequestState
+  >();
 
   /**
    * Stage one or more successive open-PR snapshots for a repo. Call N returns
@@ -30,7 +46,43 @@ export class FakeGitHubSource extends GitHubSource {
     repo: string,
     ...snapshots: PullRequestListItem[][]
   ): void {
+    this.resetOpenPullRequestState(repo);
     this.pullRequestSnapshots.set(repo, [...snapshots]);
+  }
+
+  stageOpenPullRequestFailure(repo: string, error: unknown): void {
+    this.resetOpenPullRequestState(repo);
+    this.openPullRequestFailures.set(repo, error);
+  }
+
+  deferOpenPullRequests(repo: string): DeferredOpenPullRequests {
+    let markStarted = (): void => undefined;
+    const started = new Promise<void>((resolve) => {
+      markStarted = resolve;
+    });
+
+    let resolveResponse = (_pullRequests: PullRequestListItem[]): void =>
+      undefined;
+    let rejectResponse = (_error: unknown): void => undefined;
+    const response = new Promise<PullRequestListItem[]>((resolve, reject) => {
+      resolveResponse = resolve;
+      rejectResponse = reject;
+    });
+
+    this.resetOpenPullRequestState(repo);
+    this.deferredOpenPullRequests.set(repo, { markStarted, response });
+
+    return {
+      started,
+      resolve: resolveResponse,
+      reject: rejectResponse,
+    };
+  }
+
+  private resetOpenPullRequestState(repo: string): void {
+    this.pullRequestSnapshots.delete(repo);
+    this.openPullRequestFailures.delete(repo);
+    this.deferredOpenPullRequests.delete(repo);
   }
 
   setPullRequest(repo: string, meta: PullRequestMetadata): void {
@@ -46,6 +98,17 @@ export class FakeGitHubSource extends GitHubSource {
   }
 
   listOpenPullRequests(repo: string): Promise<PullRequestListItem[]> {
+    const failure = this.openPullRequestFailures.get(repo);
+    if (this.openPullRequestFailures.has(repo)) {
+      return Promise.reject(failure);
+    }
+
+    const deferred = this.deferredOpenPullRequests.get(repo);
+    if (deferred) {
+      deferred.markStarted();
+      return deferred.response;
+    }
+
     const snapshots = this.pullRequestSnapshots.get(repo);
     if (!snapshots || snapshots.length === 0) {
       return Promise.resolve([]);
