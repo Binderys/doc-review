@@ -22,11 +22,13 @@ import {
   Query,
   Res,
   StreamableFile,
+  UseGuards,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import type { Response } from "express";
 import { createReadStream } from "node:fs";
 import { CLIENT_INDEX_PATH } from "../../config/client-assets";
+import { WatchedRepoGuard } from "../watched-repo-admission/watched-repo.guard";
 import { ReviewService } from "./review.service";
 
 const AUTHORED_HTML_CSP =
@@ -36,6 +38,7 @@ const AUTHORED_HTML_CSP =
 // review state; GET handlers only read/stream it, except for issue #40's required
 // merged-state deletion before a merged 404. Every upstream action stays on GitHub.
 @Controller()
+@UseGuards(WatchedRepoGuard)
 export class ReviewController {
   constructor(
     private readonly review: ReviewService,

@@ -22,6 +22,7 @@ const fixture: DashboardResponse = {
   repos: [
     {
       repo: "acme/board-review",
+      status: "available",
       pullRequests: [
         {
           number: 42,
@@ -33,40 +34,78 @@ const fixture: DashboardResponse = {
       ],
     },
     {
-      repo: "acme/market-research",
-      pullRequests: [
-        {
-          number: 7,
-          title: "Add competitor teardown",
-          branch: "agent/competitor-teardown",
-          author: "research-agent",
-          createdAt: "2026-06-15T09:30:00.000Z",
-        },
-      ],
+      repo: "acme/empty-review",
+      status: "available",
+      pullRequests: [],
+    },
+    {
+      repo: "acme/private-review",
+      status: "unavailable",
+      reason: "access",
+    },
+    {
+      repo: "acme/rate-limited-review",
+      status: "unavailable",
+      reason: "rate-limited",
+    },
+    {
+      repo: "acme/offline-review",
+      status: "unavailable",
+      reason: "github-unavailable",
     },
   ],
 };
 
 describe("DashboardView", () => {
-  it("renders the grouped PR list with per-PR fields and a review-surface link", () => {
-    const html = renderToStaticMarkup(<DashboardView {...fixture} />);
+  it("renders every availability state in order with semantic status text and safe links", () => {
+    const container = document.createElement("div");
+    container.innerHTML = renderToStaticMarkup(<DashboardView {...fixture} />);
 
-    // Repo groups.
-    expect(html).toContain("acme/board-review");
-    expect(html).toContain("acme/market-research");
+    const headings = Array.from(container.querySelectorAll("h2"));
+    expect(headings.map((heading) => heading.textContent)).toEqual([
+      "acme/board-review",
+      "acme/empty-review",
+      "acme/private-review",
+      "acme/rate-limited-review",
+      "acme/offline-review",
+    ]);
 
-    // Per-PR fields.
-    expect(html).toContain("#42");
-    expect(html).toContain("Draft Q3 IC memo");
-    expect(html).toContain("agent/ic-memo-q3");
-    expect(html).toContain("board-agent");
+    const groupFor = (repo: string): HTMLElement => {
+      const heading = headings.find((item) => item.textContent === repo);
+      const group = heading?.closest("section");
+      expect(group).not.toBeNull();
+      return group as HTMLElement;
+    };
 
-    // A displayed age derived from createdAt.
-    expect(html).toContain("ago");
+    const healthy = groupFor("acme/board-review");
+    expect(healthy.textContent).toContain("Available");
+    expect(healthy.textContent).toContain("#42");
+    expect(healthy.textContent).toContain("Draft Q3 IC memo");
+    expect(healthy.textContent).toContain("agent/ic-memo-q3");
+    expect(healthy.textContent).toContain("board-agent");
+    expect(healthy.textContent).toContain("ago");
+    expect(
+      healthy.querySelector('a[href="/pr/acme/board-review/42"]'),
+    ).not.toBeNull();
 
-    // A link to each review surface (/pr/:owner/:repo/:number).
-    expect(html).toContain('href="/pr/acme/board-review/42"');
-    expect(html).toContain('href="/pr/acme/market-research/7"');
+    const empty = groupFor("acme/empty-review");
+    expect(empty.textContent).toContain("Available");
+    expect(empty.textContent).toContain("No open pull requests.");
+
+    const unavailableGroups = [
+      ["acme/private-review", "Access unavailable"],
+      ["acme/rate-limited-review", "Rate limited"],
+      ["acme/offline-review", "GitHub unavailable"],
+    ] as const;
+    for (const [repo, statusText] of unavailableGroups) {
+      const group = groupFor(repo);
+      expect(group.textContent).toContain(statusText);
+      expect(group.querySelector("a")).toBeNull();
+      expect(group.querySelector("ul")).toBeNull();
+    }
+
+    expect(container.querySelector("button")).toBeNull();
+    expect(container.textContent?.toLowerCase()).not.toContain("retry");
   });
 
   it("mounts no annotation surface and never instantiates the annotation adapter", () => {

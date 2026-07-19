@@ -14,7 +14,6 @@ services:
       NODE_ENV: production
       HOST: 0.0.0.0
       PORT: 3000
-      GITHUB_TOKEN: "${GITHUB_TOKEN:?set GITHUB_TOKEN in the operator runtime environment file}"
       WATCHED_REPOS: "${WATCHED_REPOS:?set WATCHED_REPOS in the operator runtime environment file}"
       REVIEW_STATE_PATH: /data/review-state.json
     restart: unless-stopped

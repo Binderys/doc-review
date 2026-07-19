@@ -44,10 +44,31 @@ function fakeFetch(responses: FakeFetchResult[]): {
   return { fetchFn, calls };
 }
 
-// A ConfigService stub that returns a fixed token for `githubToken`.
+// A ConfigService stub that returns a fixed resource-owner credential for the
+// default `owner/repo` fixture used below.
 function configWithToken(token: string | undefined): ConfigService {
   return {
-    get: (key: string) => (key === "githubToken" ? token : undefined),
+    get: (key: string) =>
+      key === "githubCredentialsByOwner" && token !== undefined
+        ? { owner: token }
+        : undefined,
+  } as unknown as ConfigService;
+}
+
+function configWithOwnerCredentials(
+  credentials: Readonly<Record<string, string>>,
+  legacyToken?: string,
+): ConfigService {
+  return {
+    get: (key: string) => {
+      if (key === "githubCredentialsByOwner") {
+        return credentials;
+      }
+      if (key === "githubToken") {
+        return legacyToken;
+      }
+      return undefined;
+    },
   } as unknown as ConfigService;
 }
 
@@ -80,6 +101,215 @@ function fileItem(index: number): Record<string, unknown> {
 
 describe("GitHubApiSource", () => {
   const repo = "owner/repo";
+
+  describe("resource-owner credential transport", () => {
+    const operationCases: ReadonlyArray<
+      readonly [
+        string,
+        (source: GitHubApiSource) => Promise<unknown>,
+        () => Response,
+      ]
+    > = [
+      [
+        "open-PR metadata",
+        (source) => source.listOpenPullRequests("BiNdErYs/board-review"),
+        () =>
+          new Response(JSON.stringify([pullItem(1)]), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }),
+      ],
+      [
+        "single-PR metadata",
+        (source) => source.getPullRequest("BiNdErYs/board-review", 1),
+        () =>
+          new Response(
+            JSON.stringify({
+              ...pullItem(1),
+              body: "desc",
+              html_url: "https://github.com/Binderys/board-review/pull/1",
+              merged: false,
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          ),
+      ],
+      [
+        "changed-file",
+        (source) => source.listChangedFiles("BiNdErYs/board-review", 1),
+        () =>
+          new Response(JSON.stringify([fileItem(1)]), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }),
+      ],
+      [
+        "blob",
+        (source) =>
+          source.fetchBlob("BiNdErYs/board-review", "head-sha", "memo.md"),
+        () =>
+          new Response(Buffer.from("memo"), {
+            status: 200,
+            headers: { "Content-Type": "application/octet-stream" },
+          }),
+      ],
+    ];
+
+    it.each(operationCases)(
+      "binds the original repo's resource-owner credential through the %s operation",
+      async (_name, operation, response) => {
+        const { fetchFn, calls } = fakeFetch([response()]);
+        const source = new GitHubApiSource(
+          configWithOwnerCredentials(
+            {
+              binderys: "BINDERYS_OWNER_TOKEN",
+              "acme-legal": "ACME_OWNER_TOKEN",
+            },
+            "LEGACY_GLOBAL_TOKEN",
+          ),
+          fetchFn,
+        );
+
+        await operation(source);
+
+        expect(calls).toHaveLength(1);
+        expect(calls[0].headers.get("authorization")).toBe(
+          "Bearer BINDERYS_OWNER_TOKEN",
+        );
+        expect(calls[0].headers.get("authorization")).not.toContain(
+          "ACME_OWNER_TOKEN",
+        );
+        expect(calls[0].headers.get("authorization")).not.toContain(
+          "LEGACY_GLOBAL_TOKEN",
+        );
+      },
+    );
+
+    it("shares a resource-owner credential across repos while separating owners", async () => {
+      const { fetchFn, calls } = fakeFetch([
+        new Response(JSON.stringify([pullItem(1)])),
+        new Response(JSON.stringify([pullItem(2)])),
+        new Response(JSON.stringify([pullItem(3)])),
+      ]);
+      const source = new GitHubApiSource(
+        configWithOwnerCredentials({
+          binderys: "BINDERYS_OWNER_TOKEN",
+          "acme-legal": "ACME_OWNER_TOKEN",
+        }),
+        fetchFn,
+      );
+
+      await source.listOpenPullRequests("Binderys/board-review");
+      await source.listOpenPullRequests("bInDeRyS/legal-review");
+      await source.listOpenPullRequests("acme-legal/contracts");
+
+      expect(calls.map((call) => call.headers.get("authorization"))).toEqual([
+        "Bearer BINDERYS_OWNER_TOKEN",
+        "Bearer BINDERYS_OWNER_TOKEN",
+        "Bearer ACME_OWNER_TOKEN",
+      ]);
+      expect(calls[0].headers.get("authorization")).not.toContain(
+        "ACME_OWNER_TOKEN",
+      );
+      expect(calls[2].headers.get("authorization")).not.toContain(
+        "BINDERYS_OWNER_TOKEN",
+      );
+    });
+
+    it("keeps the original resource-owner credential when pagination names another owner", async () => {
+      const { fetchFn, calls } = fakeFetch([
+        new Response(JSON.stringify([pullItem(1)]), {
+          headers: {
+            Link: '<https://api.github.com/repos/acme-legal/contracts/pulls?page=2>; rel="next"',
+          },
+        }),
+        new Response(JSON.stringify([pullItem(2)])),
+      ]);
+      const source = new GitHubApiSource(
+        configWithOwnerCredentials({
+          binderys: "BINDERYS_OWNER_TOKEN",
+          "acme-legal": "ACME_OWNER_TOKEN",
+        }),
+        fetchFn,
+      );
+
+      await source.listOpenPullRequests("Binderys/board-review");
+
+      expect(calls).toHaveLength(2);
+      expect(calls[1].url).toContain("/repos/acme-legal/contracts/");
+      for (const call of calls) {
+        expect(call.headers.get("authorization")).toBe(
+          "Bearer BINDERYS_OWNER_TOKEN",
+        );
+        expect(call.headers.get("authorization")).not.toContain(
+          "ACME_OWNER_TOKEN",
+        );
+      }
+    });
+
+    it("keeps development reads anonymous when no credential is configured", async () => {
+      const { fetchFn, calls } = fakeFetch([
+        new Response(JSON.stringify([pullItem(1)])),
+      ]);
+      const source = new GitHubApiSource(
+        configWithOwnerCredentials({}),
+        fetchFn,
+      );
+
+      await source.listOpenPullRequests("Binderys/board-review");
+
+      expect(calls).toHaveLength(1);
+      expect(calls[0].headers.has("authorization")).toBe(false);
+    });
+
+    it("does not fall through to a global or other-owner credential when the requested owner is uncovered", async () => {
+      const legacySecret = "LEGACY_SECRET_SENTINEL";
+      const otherOwnerSecret = "OTHER_OWNER_SECRET_SENTINEL";
+      const { fetchFn, calls } = fakeFetch([
+        new Response(JSON.stringify({ message: "Bad credentials" }), {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        }),
+      ]);
+      const source = new GitHubApiSource(
+        configWithOwnerCredentials(
+          { "acme-legal": otherOwnerSecret },
+          legacySecret,
+        ),
+        fetchFn,
+      );
+
+      let failure: unknown;
+      try {
+        await source.listOpenPullRequests("Binderys/board-review");
+      } catch (cause) {
+        failure = cause;
+      }
+
+      expect(failure).toBeInstanceOf(GitHubApiError);
+      expect(calls).toHaveLength(1);
+      expect(calls[0].headers.has("authorization")).toBe(false);
+      expect(String(failure)).not.toContain(legacySecret);
+      expect(String(failure)).not.toContain(otherOwnerSecret);
+    });
+
+    it.each([undefined, "LEGACY_GLOBAL_TOKEN"])(
+      "does not treat an inherited record property as a resource-owner credential",
+      async (legacyToken) => {
+        const { fetchFn, calls } = fakeFetch([
+          new Response(JSON.stringify([pullItem(1)])),
+        ]);
+        const source = new GitHubApiSource(
+          configWithOwnerCredentials({}, legacyToken),
+          fetchFn,
+        );
+
+        await source.listOpenPullRequests("constructor/board-review");
+
+        expect(calls).toHaveLength(1);
+        expect(calls[0].headers.has("authorization")).toBe(false);
+      },
+    );
+  });
 
   it("reports whether the pull request has merged", async () => {
     const { fetchFn } = fakeFetch([

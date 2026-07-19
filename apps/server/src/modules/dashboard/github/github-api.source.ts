@@ -2,6 +2,10 @@ import type { PullRequestListItem } from "@doc-review/api-contracts";
 import { Injectable, Optional } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import {
+  type GitHubCredentialsByOwner,
+  githubResourceOwner,
+} from "../../../config/env";
+import {
   GitHubApiError,
   GitHubTimeoutError,
   GitHubTransportError,
@@ -307,9 +311,9 @@ function providerMinimumDelayMs(
 
 /**
  * The real GitHub source: a thin wrapper over the Node 24 global `fetch` hitting
- * the GitHub REST API with the configured read-scope GitHub token. No Octokit, no
- * new dependency. `listOpenPullRequests` was first wired end to end in #6; the
- * remaining operations support the review surface.
+ * the GitHub REST API with the configured resource-owner credential. No Octokit,
+ * no new dependency. `listOpenPullRequests` was first wired end to end in #6;
+ * the remaining operations support the review surface.
  */
 @Injectable()
 export class GitHubApiSource extends GitHubSource {
@@ -329,8 +333,10 @@ export class GitHubApiSource extends GitHubSource {
   }
 
   async listOpenPullRequests(repo: string): Promise<PullRequestListItem[]> {
+    const credential = this.credentialForRepo(repo);
     const payload = await this.requestJsonPaginated(
       `/repos/${repo}/pulls?state=open&per_page=100`,
+      credential,
     );
 
     return payload.map((item) => {
@@ -349,8 +355,9 @@ export class GitHubApiSource extends GitHubSource {
     repo: string,
     prNumber: number,
   ): Promise<PullRequestMetadata> {
+    const credential = this.credentialForRepo(repo);
     const payload = parsePullRequestDetail(
-      await this.requestJson(`/repos/${repo}/pulls/${prNumber}`),
+      await this.requestJson(`/repos/${repo}/pulls/${prNumber}`, credential),
     );
 
     return {
@@ -371,8 +378,10 @@ export class GitHubApiSource extends GitHubSource {
     repo: string,
     prNumber: number,
   ): Promise<ChangedFile[]> {
+    const credential = this.credentialForRepo(repo);
     const payload = await this.requestJsonPaginated(
       `/repos/${repo}/pulls/${prNumber}/files?per_page=100`,
+      credential,
     );
 
     return payload.map((item) => {
@@ -389,12 +398,14 @@ export class GitHubApiSource extends GitHubSource {
   }
 
   async fetchBlob(repo: string, ref: string, path: string): Promise<FileBlob> {
+    const credential = this.credentialForRepo(repo);
     const encodedPath = path.split("/").map(encodeURIComponent).join("/");
     // The raw media type returns the exact file bytes for files up to GitHub's
     // 100 MB Contents API limit; the JSON media type omits `content` above 1 MB.
     const response = await this.send(
       `/repos/${repo}/contents/${encodedPath}?ref=${encodeURIComponent(ref)}`,
       "application/vnd.github.raw",
+      credential,
     );
 
     // Only a plain 200 carries the full file body. A 204/206 (empty/partial)
@@ -421,19 +432,44 @@ export class GitHubApiSource extends GitHubSource {
     };
   }
 
+  private credentialForRepo(repo: string): string | undefined {
+    const owner = githubResourceOwner(repo);
+    const credentials = this.config.get<GitHubCredentialsByOwner>(
+      "githubCredentialsByOwner",
+    );
+    if (credentials && Object.hasOwn(credentials, owner)) {
+      return credentials[owner];
+    }
+    return undefined;
+  }
+
   // A single JSON resource (metadata). Follows no pagination.
-  private async requestJson(target: string): Promise<unknown> {
-    const response = await this.send(target, "application/vnd.github+json");
+  private async requestJson(
+    target: string,
+    credential: string | undefined,
+  ): Promise<unknown> {
+    const response = await this.send(
+      target,
+      "application/vnd.github+json",
+      credential,
+    );
     return response.json();
   }
 
   // A JSON collection, followed across every `Link` page in received order so
   // every item is returned exactly once with no reordering.
-  private async requestJsonPaginated(target: string): Promise<unknown[]> {
+  private async requestJsonPaginated(
+    target: string,
+    credential: string | undefined,
+  ): Promise<unknown[]> {
     const items: unknown[] = [];
     let next: string | null = target;
     while (next !== null) {
-      const response = await this.send(next, "application/vnd.github+json");
+      const response = await this.send(
+        next,
+        "application/vnd.github+json",
+        credential,
+      );
       const page: unknown = await response.json();
       if (!Array.isArray(page)) {
         throw new Error(
@@ -449,15 +485,18 @@ export class GitHubApiSource extends GitHubSource {
   // The single read-only transport point: GET only, no body, with the standard
   // GitHub headers and the per-call `Accept`. Accepts an absolute URL (a `Link`
   // next page) or a `/…` path resolved against the API base.
-  private async send(target: string, accept: string): Promise<Response> {
-    const token = this.config.get<string>("githubToken");
+  private async send(
+    target: string,
+    accept: string,
+    credential: string | undefined,
+  ): Promise<Response> {
     const headers: Record<string, string> = {
       Accept: accept,
       "X-GitHub-Api-Version": "2022-11-28",
       "User-Agent": "doc-review",
     };
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
+    if (credential) {
+      headers.Authorization = `Bearer ${credential}`;
     }
 
     // Resolve every target - relative `/…` path or absolute `Link` next URL -

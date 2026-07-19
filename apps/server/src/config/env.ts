@@ -2,6 +2,26 @@
 // comma-separated WATCHED_REPOS env value.
 const DEFAULT_WATCHED_REPOS = ["acme/board-review"];
 
+type ProcessEnvironment = Readonly<Record<string, string | undefined>>;
+
+export type GitHubCredentialsByOwner = Readonly<Record<string, string>>;
+
+export type ServerConfiguration = {
+  nodeEnv: string;
+  host: string;
+  port: number;
+  githubCredentialsByOwner: GitHubCredentialsByOwner;
+  watchedRepos: string[];
+  githubSource: string;
+  reviewStatePath: string;
+};
+
+export const githubCredentialEnvironmentVariable = (owner: string): string =>
+  `GITHUB_TOKEN_${owner.toUpperCase().replaceAll("-", "_")}`;
+
+export const githubResourceOwner = (repo: string): string =>
+  repo.split("/", 1)[0].toLowerCase();
+
 const parseWatchedRepos = (raw: string | undefined): string[] => {
   if (!raw) {
     return DEFAULT_WATCHED_REPOS;
@@ -15,16 +35,38 @@ const parseWatchedRepos = (raw: string | undefined): string[] => {
   return repos.length > 0 ? repos : DEFAULT_WATCHED_REPOS;
 };
 
-export const env = () => ({
-  nodeEnv: process.env.NODE_ENV ?? "development",
-  // Loopback by default so a deployment opts into any wider bind explicitly
-  // (ADR 0001: the process binds a single private interface, never all of them).
-  host: process.env.HOST ?? "127.0.0.1",
-  port: Number(process.env.PORT ?? 3000),
-  // Read-scope GitHub credential the GitHub source authenticates with. Development
-  // may omit it; production validation requires it explicitly.
-  githubToken: process.env.GITHUB_TOKEN,
-  watchedRepos: parseWatchedRepos(process.env.WATCHED_REPOS),
-  githubSource: process.env.DOC_REVIEW_GITHUB_SOURCE ?? "github",
-  reviewStatePath: process.env.REVIEW_STATE_PATH ?? ".data/review-state.json",
-});
+const parseGithubCredentialsByOwner = (
+  watchedRepos: string[],
+  environment: ProcessEnvironment,
+): GitHubCredentialsByOwner => {
+  const credentials: Record<string, string> = {};
+  for (const repo of watchedRepos) {
+    const owner = githubResourceOwner(repo);
+    const credential = environment[githubCredentialEnvironmentVariable(owner)];
+    if (credential && credential.trim().length > 0) {
+      credentials[owner] = credential;
+    }
+  }
+  return credentials;
+};
+
+export const env = (
+  environment: ProcessEnvironment = process.env,
+): ServerConfiguration => {
+  const watchedRepos = parseWatchedRepos(environment.WATCHED_REPOS);
+
+  return {
+    nodeEnv: environment.NODE_ENV ?? "development",
+    // Loopback by default so a deployment opts into any wider bind explicitly
+    // (ADR 0001: the process binds a single private interface, never all of them).
+    host: environment.HOST ?? "127.0.0.1",
+    port: Number(environment.PORT ?? 3000),
+    githubCredentialsByOwner: parseGithubCredentialsByOwner(
+      watchedRepos,
+      environment,
+    ),
+    watchedRepos,
+    githubSource: environment.DOC_REVIEW_GITHUB_SOURCE ?? "github",
+    reviewStatePath: environment.REVIEW_STATE_PATH ?? ".data/review-state.json",
+  };
+};

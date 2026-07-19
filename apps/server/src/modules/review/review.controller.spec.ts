@@ -1,4 +1,5 @@
 import type { INestApplication } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { Test } from "@nestjs/testing";
 import { randomUUID } from "node:crypto";
 import { mkdir, rm } from "node:fs/promises";
@@ -10,12 +11,12 @@ import { HttpExceptionFilter } from "../../common/filters/http-exception.filter"
 import { ResponseInterceptor } from "../../common/interceptors/response.interceptor";
 import { AppValidationPipe } from "../../common/pipes/validation.pipe";
 import { FakeGitHubSource } from "../dashboard/github/github-fake.source";
+import { GITHUB_SOURCE_BACKEND } from "../dashboard/github/github-source-backend";
 import type {
   ChangedFile,
   FileBlob,
   PullRequestMetadata,
 } from "../dashboard/github/github-source";
-import { GitHubSource } from "../dashboard/github/github-source";
 import {
   reviewArtifactSchema,
   reviewCommentSchema,
@@ -34,9 +35,11 @@ import {
   stageReviewLoopSecondHead,
 } from "../../../test/fixtures/review-loop";
 import { ReviewController } from "./review.controller";
+import { ReviewStateStore } from "./review-state.store";
 import { convertCanonicalHtml } from "./renderers/canonical-html";
 import { normalizeHtmlReviewText } from "./renderers/html-review-text";
 import { normalizeMirrorReviewText } from "./renderers/mirror-review-text";
+import { FileRendererRegistry } from "./renderers/renderer";
 
 const blob = (path: string, ref: string, text: string): FileBlob => ({
   path,
@@ -94,11 +97,13 @@ const buildApp = async (
   process.env.REVIEW_STATE_PATH = statePath;
   testStatePaths.add(statePath);
   const previousNodeEnv = process.env.NODE_ENV;
+  const previousWatchedRepos = process.env.WATCHED_REPOS;
+  process.env.WATCHED_REPOS = `${SLUG},${REVIEW_LOOP.owner}/${REVIEW_LOOP.repo}`;
   if (nodeEnv) {
     process.env.NODE_ENV = nodeEnv;
   }
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
-    .overrideProvider(GitHubSource)
+    .overrideProvider(GITHUB_SOURCE_BACKEND)
     .useValue(fake)
     .compile()
     .finally(() => {
@@ -106,6 +111,11 @@ const buildApp = async (
         delete process.env.NODE_ENV;
       } else {
         process.env.NODE_ENV = previousNodeEnv;
+      }
+      if (previousWatchedRepos === undefined) {
+        delete process.env.WATCHED_REPOS;
+      } else {
+        process.env.WATCHED_REPOS = previousWatchedRepos;
       }
     });
 
@@ -166,6 +176,133 @@ type ReviewBody = {
     }[];
   };
 };
+
+describe("watched repo admission at repo-scoped HTTP routes", () => {
+  let app: INestApplication | undefined;
+
+  afterEach(async () => {
+    await app?.close();
+    app = undefined;
+  });
+
+  it("returns the safe not-found envelope before GitHub or review state for every unlisted route", async () => {
+    const github = new FakeGitHubSource();
+    const githubCalls = [
+      jest
+        .spyOn(github, "listOpenPullRequests")
+        .mockRejectedValue(new Error("GitHub backend must not be called")),
+      jest
+        .spyOn(github, "getPullRequest")
+        .mockRejectedValue(new Error("GitHub backend must not be called")),
+      jest
+        .spyOn(github, "listChangedFiles")
+        .mockRejectedValue(new Error("GitHub backend must not be called")),
+      jest
+        .spyOn(github, "fetchBlob")
+        .mockRejectedValue(new Error("GitHub backend must not be called")),
+    ];
+    const reviewState = new ReviewStateStore({
+      get: () => createTestStatePath(),
+    } as unknown as ConfigService);
+    const reviewStateCalls = [
+      jest
+        .spyOn(reviewState, "reconcileRound")
+        .mockRejectedValue(new Error("Review state must not be called")),
+      jest
+        .spyOn(reviewState, "getCurrentRound")
+        .mockRejectedValue(new Error("Review state must not be called")),
+      jest
+        .spyOn(reviewState, "hasReviewHead")
+        .mockRejectedValue(new Error("Review state must not be called")),
+      jest
+        .spyOn(reviewState, "deleteReview")
+        .mockRejectedValue(new Error("Review state must not be called")),
+      jest
+        .spyOn(reviewState, "addComment")
+        .mockRejectedValue(new Error("Review state must not be called")),
+      jest
+        .spyOn(reviewState, "finishRound")
+        .mockRejectedValue(new Error("Review state must not be called")),
+      jest
+        .spyOn(reviewState, "resolveComment")
+        .mockRejectedValue(new Error("Review state must not be called")),
+      jest
+        .spyOn(reviewState, "approveRound")
+        .mockRejectedValue(new Error("Review state must not be called")),
+      jest
+        .spyOn(reviewState, "getRoundForArtifact")
+        .mockRejectedValue(new Error("Review state must not be called")),
+    ];
+    const render = jest.fn(() => {
+      throw new Error("Renderer must not be called");
+    });
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(GITHUB_SOURCE_BACKEND)
+      .useValue(github)
+      .overrideProvider(ReviewStateStore)
+      .useValue(reviewState)
+      .overrideProvider(FileRendererRegistry)
+      .useValue({ render })
+      .overrideProvider(ConfigService)
+      .useValue({
+        get: (key: string) => {
+          if (key === "watchedRepos") {
+            return [SLUG];
+          }
+          if (key === "nodeEnv") {
+            return "production";
+          }
+          return undefined;
+        },
+      })
+      .compile();
+    app = moduleRef.createNestApplication();
+    app.useGlobalPipes(new AppValidationPipe());
+    app.useGlobalFilters(new HttpExceptionFilter());
+    app.useGlobalInterceptors(new ResponseInterceptor());
+    await app.init();
+
+    const unlistedRoute = "/pr/outside/private-documents/42";
+    const server = app.getHttpServer();
+    const requests = [
+      () =>
+        request(server).get(unlistedRoute).set("Accept", "application/json"),
+      () => request(server).get(unlistedRoute).set("Accept", "text/html"),
+      () =>
+        request(server).get(`${unlistedRoute}/raw`).query({ path: "memo.md" }),
+      () => request(server).post(`${unlistedRoute}/review/reconcile`),
+      () =>
+        request(server)
+          .post(`${unlistedRoute}/comments`)
+          .send({ scope: "review", body: "Reject this feedback" }),
+      () =>
+        request(server)
+          .patch(`${unlistedRoute}/review/current`)
+          .send({ status: "finished" }),
+      () =>
+        request(server)
+          .patch(`${unlistedRoute}/comments/comment-id`)
+          .send({ resolved: true }),
+      () => request(server).get(`${unlistedRoute}/review/current`),
+    ];
+
+    for (const [index, send] of requests.entries()) {
+      const response = await send();
+      expect({ index, status: response.status, body: response.body }).toEqual({
+        index,
+        status: 404,
+        body: {
+          success: false,
+          statusCode: 404,
+          message: "Not Found",
+        },
+      });
+      for (const call of [...githubCalls, ...reviewStateCalls, render]) {
+        expect(call).not.toHaveBeenCalled();
+      }
+    }
+  });
+});
 
 describe("GET /pr/:owner/:repo/:number (seam)", () => {
   let app: INestApplication | undefined;
@@ -2701,7 +2838,7 @@ describe("complete multi-head review lifecycle", () => {
   });
 
   it("drives render through every anchor, carry-forward, approval, and merge cleanup", async () => {
-    const fake = app!.get(GitHubSource) as FakeGitHubSource;
+    const fake = app!.get(GITHUB_SOURCE_BACKEND) as FakeGitHubSource;
 
     await reconcileReview(app!, route);
     const initial = await request(app!.getHttpServer()).get(route).expect(200);

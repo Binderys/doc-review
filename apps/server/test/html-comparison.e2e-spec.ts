@@ -1,5 +1,5 @@
 import type { INestApplication } from "@nestjs/common";
-import type { ConfigService } from "@nestjs/config";
+import { ConfigService } from "@nestjs/config";
 import { Test } from "@nestjs/testing";
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import { once } from "node:events";
@@ -10,10 +10,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { AppModule } from "../src/app.module";
 import { FakeGitHubSource } from "../src/modules/dashboard/github/github-fake.source";
-import {
-  GitHubSource,
-  type PullRequestMetadata,
-} from "../src/modules/dashboard/github/github-source";
+import { GITHUB_SOURCE_BACKEND } from "../src/modules/dashboard/github/github-source-backend";
+import type { PullRequestMetadata } from "../src/modules/dashboard/github/github-source";
 import { ReviewStateStore } from "../src/modules/review/review-state.store";
 
 // Headless Chrome cold-start on a loaded CI runner routinely runs past a few
@@ -141,8 +139,20 @@ describe("authored HTML comparison browser egress", () => {
     );
 
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
-      .overrideProvider(GitHubSource)
+      .overrideProvider(GITHUB_SOURCE_BACKEND)
       .useValue(fake)
+      .overrideProvider(ConfigService)
+      .useValue({
+        get: (key: string) => {
+          if (key === "watchedRepos") {
+            return [slug];
+          }
+          if (key === "nodeEnv") {
+            return "development";
+          }
+          return undefined;
+        },
+      })
       .overrideProvider(ReviewStateStore)
       .useValue(reviewState)
       .compile();
