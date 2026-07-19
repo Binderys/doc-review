@@ -1,0 +1,1 @@
+export const GITHUB_SOURCE_BACKEND = Symbol("GITHUB_SOURCE_BACKEND");

@@ -86,7 +86,7 @@ describe("compiled server boot smoke", () => {
       headers: { Accept: "text/html" },
     });
     const nestedResponse = await fetch(
-      `http://127.0.0.1:${port}/pr/acme/reports/78`,
+      `http://127.0.0.1:${port}/pr/acme/compiled-boot-fixture/78`,
       { headers: { Accept: "text/html" } },
     );
 
@@ -118,7 +118,7 @@ describe("compiled server boot smoke", () => {
       },
     });
     const reviewApiResponse = await fetch(
-      `http://127.0.0.1:${port}/pr/acme/reports/not-a-number`,
+      `http://127.0.0.1:${port}/pr/acme/compiled-boot-fixture/not-a-number`,
       { headers: { Accept: "application/json" } },
     );
 

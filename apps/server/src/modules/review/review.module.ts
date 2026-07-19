@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { DashboardModule } from "../dashboard/dashboard.module";
+import { WatchedRepoAdmissionModule } from "../watched-repo-admission/watched-repo-admission.module";
 import { DocxRenderer } from "./renderers/docx.renderer";
 import { DownloadRenderer } from "./renderers/download.renderer";
 import { HtmlRenderer } from "./renderers/html.renderer";
@@ -15,9 +16,9 @@ import { ReviewStateStore } from "./review-state.store";
 import { ReviewService } from "./review.service";
 
 @Module({
-  // DashboardModule owns and exports the single GitHubSource seam (real `fetch`,
-  // overridden by the in-memory fake in tests); the review surface reuses it.
-  imports: [DashboardModule],
+  // DashboardModule owns and exports the admitted GitHubSource seam. Tests replace
+  // only its backend with an in-memory fake; the review surface reuses the wrapper.
+  imports: [DashboardModule, WatchedRepoAdmissionModule],
   controllers: [ReviewController],
   providers: [
     ReviewService,

@@ -9,7 +9,7 @@ import { ResponseInterceptor } from "../../common/interceptors/response.intercep
 import { AppValidationPipe } from "../../common/pipes/validation.pipe";
 import { DashboardController } from "./dashboard.controller";
 import { FakeGitHubSource } from "./github/github-fake.source";
-import { GitHubSource } from "./github/github-source";
+import { GITHUB_SOURCE_BACKEND } from "./github/github-source-backend";
 
 const DEFAULT_REPO = "acme/board-review";
 
@@ -32,7 +32,7 @@ const buildApp = async (
   watchedRepos?: string[],
 ): Promise<INestApplication> => {
   const builder = Test.createTestingModule({ imports: [AppModule] })
-    .overrideProvider(GitHubSource)
+    .overrideProvider(GITHUB_SOURCE_BACKEND)
     .useValue(fake)
     .overrideProvider(ConfigService)
     .useValue({
