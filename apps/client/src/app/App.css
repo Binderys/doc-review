@@ -1,18 +1,75 @@
+/*
+  Doc Review production identity. The binderys editorial identity (DESIGN.md) is
+  translated into application chrome, not restyled by taste: two verified grounds
+  (paper / ink) selected by `data-theme`, the phi spacing scale (computed, never
+  rounded), the oxblood signature for identity moments only, and the waxed-thread
+  pair for structure only. No status token ships: every state carries a label plus a
+  non-colour cue. Colours are tokens so both grounds recolour every surface at once.
+*/
+
 :root {
-  color: #172026;
-  background: #f6f8fb;
-  font-family:
-    Inter,
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    sans-serif;
+  /* Golden ratio is the source of truth; steps are computed, never rounded. */
+  --phi: 1.618;
+  --s0: 16px;
+  --sn1: calc(var(--s0) / var(--phi));
+  --sn2: calc(var(--s0) / var(--phi) / var(--phi));
+  --s1: calc(var(--s0) * var(--phi));
+  --s2: calc(var(--s1) * var(--phi));
+  --s3: calc(var(--s2) * var(--phi));
+  --s4: calc(var(--s3) * var(--phi));
+  --s5: calc(var(--s4) * var(--phi));
+
+  --measure: 64ch;
+  --container: calc(var(--measure) * var(--phi));
+
+  --font-sans:
+    "Wanted Sans Variable", Inter, ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono:
+    "D2Coding", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    monospace;
+
+  font-family: var(--font-sans);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Grounds and verified derived neutrals (DESIGN "Grounds"/"Signature"/"Thread").
+   Ink is the default until the visitor chooses; the attribute is set before paint. */
+:root,
+:root[data-theme="ink"] {
+  --ground: #111319;
+  --surface: #16181e;
+  --surface-2: #1a1c23;
+  --text: #edeef0;
+  --muted: #898b93;
+  --hairline: #25272d;
+  --signature: #c4524a;
+  --signature-text: #cb625c;
+  --thread: #bda58f;
+  --shadow: 0 1px 2px rgb(0 0 0 / 40%), 0 12px 32px rgb(0 0 0 / 32%);
+  color-scheme: dark;
+}
+
+:root[data-theme="paper"] {
+  --ground: #edeef0;
+  --surface: #f7f7f8;
+  --surface-2: #eceded;
+  --text: #111319;
+  --muted: #6b6862;
+  --hairline: #d5d5d4;
+  --signature: #c4524a;
+  --signature-text: #7c2d2d;
+  --thread: #7d6a5a;
+  --shadow: 0 1px 2px rgb(17 19 25 / 5%), 0 8px 24px rgb(17 19 25 / 6%);
+  color-scheme: light;
+}
+
+:root {
+  color: var(--text);
+  background: var(--ground);
 }
 
 * {
@@ -21,6 +78,9 @@
 
 body {
   margin: 0;
+  background: var(--ground);
+  color: var(--text);
+  font-weight: 450;
 }
 
 button,
@@ -28,66 +88,341 @@ input,
 textarea,
 select {
   font: inherit;
+  color: inherit;
 }
+
+:where(a, button, [tabindex]):focus-visible {
+  outline: 3px solid var(--signature);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* ---- shell + frame ---------------------------------------------------------- */
 
 .app-shell {
   min-height: 100vh;
-  padding: 48px 24px;
+  padding: var(--s1) clamp(var(--s0), 4vw, var(--s2)) var(--s4);
 }
 
-.app-shell__inner {
-  width: min(960px, 100%);
+.app-shell__frame {
+  width: min(calc(var(--container) + var(--s2)), 100%);
   margin: 0 auto;
 }
 
+.app-shell__frame--review {
+  width: min(1440px, 100%);
+}
+
+.app-shell__inner {
+  width: 100%;
+  margin: 0 auto;
+  padding-top: var(--s1);
+}
+
+.app-shell__inner--review {
+  width: 100%;
+}
+
 .app-shell__eyebrow {
-  color: #326273;
-  font-size: 0.875rem;
+  margin: 0;
+  color: var(--signature-text);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
   font-weight: 700;
-  letter-spacing: 0;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
 .app-shell h1 {
-  margin: 12px 0;
-  color: #111827;
-  font-size: clamp(2rem, 5vw, 4rem);
-  line-height: 1;
+  margin: var(--sn1) 0 var(--s0);
+  color: var(--text);
+  font-size: clamp(2rem, 5vw, 3.4rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.04;
 }
 
-.app-shell__lead {
-  max-width: 720px;
-  color: #4b5563;
-  font-size: 1.125rem;
-  line-height: 1.7;
-}
-
-.app-shell__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 16px;
-  margin-top: 32px;
-}
-
-.app-shell__card {
-  min-height: 150px;
-  padding: 20px;
-  border: 1px solid #d6dde6;
+.app-shell__error {
+  margin: var(--s0) 0;
+  padding: var(--sn1) var(--s0);
+  border: 1px solid color-mix(in srgb, var(--signature) 45%, var(--hairline));
   border-radius: 8px;
-  background: #ffffff;
+  background: color-mix(in srgb, var(--signature) 8%, var(--surface));
+  color: var(--signature-text);
+  font-weight: 550;
 }
 
-.app-shell__card h2 {
-  margin: 0 0 8px;
-  color: #172026;
-  font-size: 1rem;
+.app-shell__loading {
+  color: var(--muted);
 }
 
-.app-shell__card p {
+/* ---- masthead --------------------------------------------------------------- */
+
+.masthead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s0);
+  padding-bottom: var(--sn1);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.masthead__lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+}
+
+.masthead__mark {
+  width: 20px;
+  height: 20px;
+  transform: translateY(-0.1em);
+  color: var(--text);
+}
+
+.masthead__wordmark {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.058em;
+  color: var(--text);
+}
+
+.masthead__sibling {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--sn1);
+  padding-left: var(--sn1);
+  border-left: 1px solid var(--hairline);
+}
+
+.masthead__folio {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--signature-text);
+}
+
+.masthead__sibling-name {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.masthead__crumb {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.masthead__spacer {
+  flex: 1 1 var(--s2);
+}
+
+.masthead__theme {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: var(--surface);
+}
+
+.masthead__theme button {
+  min-height: 32px;
+  padding: 3px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 550;
+  cursor: pointer;
+}
+
+.masthead__theme button[aria-pressed="true"] {
+  background: var(--ground);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+
+/* ---- footer ----------------------------------------------------------------- */
+
+.app-shell__foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: var(--s3);
+  padding-top: var(--s0);
+  border-top: 1px solid var(--hairline);
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.app-shell__foot-mark {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  color: var(--muted);
+}
+
+/* ---- dashboard -------------------------------------------------------------- */
+
+.dashboard__count {
+  margin: 0 0 var(--s2);
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: var(--muted);
+  letter-spacing: 0.01em;
+}
+
+.dashboard__count-n {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.dashboard__owner {
+  margin-top: var(--s2);
+}
+
+.dashboard__owner-name {
+  margin: 0 0 var(--s0);
+  font-family: var(--font-mono);
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--muted);
+}
+
+.dashboard__repo {
+  margin-top: var(--s1);
+}
+
+.dashboard__repo-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s0);
+  padding-bottom: var(--sn1);
+  margin-bottom: var(--s0);
+  /* The Binding rule: the site-wide dashed seam motif, in the thread colour. */
+  border-bottom: 1.5px dashed var(--thread);
+}
+
+.dashboard__repo-name {
   margin: 0;
-  color: #5b6673;
-  line-height: 1.6;
+  font-family: var(--font-mono);
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
+
+.dashboard__status {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.dashboard__status--available span {
+  color: var(--thread);
+}
+
+.dashboard__status--unavailable {
+  color: var(--signature-text);
+}
+
+.dashboard__unavailable,
+.dashboard__empty {
+  margin: 0;
+  max-width: 60ch;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.dashboard__prs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: var(--s0);
+}
+
+.dashboard__pr {
+  display: flex;
+}
+
+.dashboard__pr a {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sn1);
+  width: 100%;
+  padding: var(--s0);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  text-decoration: none;
+  color: var(--text);
+  transition:
+    transform 0.14s ease,
+    border-color 0.14s ease;
+}
+
+.dashboard__pr a:hover {
+  transform: translateY(-2px);
+  border-color: var(--thread);
+}
+
+.dashboard__pr-number {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--signature-text);
+}
+
+.dashboard__pr-title {
+  font-size: 1.08rem;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+.dashboard__pr-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: auto;
+  padding-top: var(--sn1);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.dashboard__pr-branch {
+  color: var(--text);
+}
+
+.dashboard__pr-dot {
+  color: var(--hairline);
+}
+
+.dashboard__pr-age {
+  margin-left: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard__pr a {
+    transition: none;
+  }
+}
+
+/* ---- review surface --------------------------------------------------------- */
 
 .review-surface,
 .review-surface__files,
@@ -99,494 +434,91 @@ select {
 }
 
 .review-surface__header {
-  padding-bottom: 24px;
-  border-bottom: 1px solid #d6dde6;
-}
-
-.review-surface__links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-}
-
-.review-surface__links a {
-  color: #24576a;
-  font-weight: 700;
-  text-underline-offset: 3px;
-}
-
-.review-surface__files {
-  display: grid;
-  gap: 20px;
-  margin: 24px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.review-file {
-  padding: 20px;
-  border: 1px solid #d6dde6;
-  border-radius: 8px;
-  background: #ffffff;
-  box-shadow: 0 1px 2px rgb(15 23 42 / 6%);
-}
-
-.review-file__marker {
-  display: inline-block;
-  margin-right: 8px;
-  padding: 3px 8px;
-  border: 1px solid currentColor;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 800;
-  line-height: 1.2;
-}
-
-.review-file__marker--added {
-  color: #166534;
-  background: #f0fdf4;
-}
-
-.review-file__marker--modified {
-  color: #075985;
-  background: #f0f9ff;
-}
-
-.review-file__marker--deleted {
-  color: #9f1239;
-  background: #fff1f2;
-}
-
-.review-file__path {
-  color: #26323c;
-  font-family:
-    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-  font-size: 0.875rem;
-  font-weight: 700;
-  overflow-wrap: anywhere;
-}
-
-.review-file__md-diff,
-.review-file__md-rendered,
-.review-file__docx {
-  margin-top: 16px;
-  overflow-wrap: anywhere;
-}
-
-.review-file__html-rendered,
-.review-file__pdf {
-  width: 100%;
-  min-height: 360px;
-  margin-top: 16px;
-  border: 1px solid #d6dde6;
-  border-radius: 8px;
-}
-
-/* Sanitized HTML annotation copy (#65): the safe, selectable semantics surface shown
-   above the scriptless sandbox. The hint labels it as safe; the text pane matches the
-   Mirror annotation surface so both rendered copies read the same. */
-.html-safe-copy {
-  margin-top: 16px;
-}
-
-.html-safe-copy__hint {
-  margin: 0 0 8px;
-  color: #4b5563;
-  font-size: 0.875rem;
-}
-
-.html-safe-copy__text {
-  padding: 16px;
-  border: 1px solid #d6dde6;
-  border-radius: 8px;
-  background: #ffffff;
-  overflow-wrap: break-word;
-  line-height: 1.6;
-}
-
-.html-safe-copy__text > :first-child {
-  margin-top: 0;
-}
-
-.html-safe-copy__text > :last-child {
-  margin-bottom: 0;
-}
-
-/* Source diff (#44): the frame contains long lines within the file card, while
-   the fixed-layout table keeps both gutters aligned with whitespace-preserving text. */
-.review-file__source-diff-frame {
-  max-width: 100%;
-  margin: 16px 0;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  overflow-x: auto;
-  background: #ffffff;
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 60%);
-}
-
-.review-file__source-diff {
-  width: 100%;
-  table-layout: fixed;
-  border-collapse: collapse;
-  font-family:
-    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-  font-size: 0.8125rem;
-  line-height: 1.5;
-}
-
-.review-source-line__num {
-  width: 3.25rem;
-  padding: 0 6px;
-  color: #94a3b8;
-  text-align: right;
-  white-space: nowrap;
-  vertical-align: top;
-  user-select: none;
-}
-
-.review-source-line__num--new {
-  border-right: 1px solid #e6ebf1;
-  padding: 0;
-}
-
-.review-source-line__num--new[data-anchorable="false"]::after {
-  display: block;
-  width: 12px;
-  margin: 0.8rem auto;
-  border-top: 1px solid #94a3b8;
-  content: "";
-  transform: rotate(-45deg);
-}
-
-.review-source-line__anchor {
-  width: 100%;
-  min-height: 1.75rem;
-  padding: 0 6px;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  color: #475569;
-  font: inherit;
-  text-align: right;
-  cursor: pointer;
-}
-
-.review-source-line__anchor:hover {
-  background: rgb(50 98 115 / 12%);
-  text-decoration: underline;
-  text-decoration-thickness: 2px;
-  text-underline-offset: 2px;
-}
-
-.review-source-line__anchor:focus-visible {
-  position: relative;
-  z-index: 1;
-  outline: 3px double #0f5269;
-  outline-offset: -3px;
-}
-
-.review-source-line__anchor:active {
-  box-shadow: inset 0 0 0 2px currentColor;
-  transform: scale(0.92);
-}
-
-.review-source-line__anchor[aria-pressed="true"] {
-  background: rgb(15 82 105 / 16%);
-  box-shadow: inset 0 0 0 2px currentColor;
-  color: #0f5269;
-  font-weight: 900;
-  text-decoration: underline;
-  text-decoration-thickness: 2px;
-  text-underline-offset: 2px;
-}
-
-.review-source-line__marker {
-  width: 2rem;
-  padding: 0 6px;
-  color: #64748b;
-  text-align: center;
-  vertical-align: top;
-  user-select: none;
-}
-
-.review-source-line__text {
-  min-width: 0;
-  padding: 3px 10px;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-
-.review-source-line--added {
-  background: #e8f6ec;
-}
-
-.review-source-line--added .review-source-line__marker {
-  color: #1a7f37;
-}
-
-.review-source-line--removed {
-  background: #fbe9eb;
-}
-
-.review-source-line--removed .review-source-line__marker {
-  color: #cf222e;
-}
-
-.review-source-line[data-selected="true"] .review-source-line__text {
-  box-shadow:
-    inset 0 1px #0f5269,
-    inset 0 -1px #0f5269;
-  font-weight: 650;
-}
-
-.review-file__source-diff-empty {
-  margin: 0;
-  padding: 24px;
-  color: #64748b;
-  font-size: 0.875rem;
-  font-style: italic;
-  text-align: center;
-}
-
-.review-feedback,
-.review-feedback-form,
-.review-round {
-  margin-top: 20px;
-}
-
-.review-feedback {
-  padding-top: 24px;
-  border-top: 1px solid #d6dde6;
-}
-
-.review-feedback-form {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
-  padding: 16px;
-  border: 1px solid #d6dde6;
-  border-radius: 8px;
-  background: #ffffff;
-}
-
-.review-feedback-form h3,
-.review-feedback-form h4 {
-  grid-column: 1 / -1;
-  margin: 0;
-}
-
-.review-feedback-form__anchor-hint {
-  grid-column: 1 / -1;
-  margin: 0;
-  padding: 8px 10px;
-  border-left: 3px solid #326273;
-  background: #f1f7f9;
-  color: #3f5661;
-  font-size: 0.8125rem;
-  line-height: 1.5;
-}
-
-.review-feedback-form label {
-  display: grid;
-  gap: 6px;
-  color: #4b5563;
-  font-size: 0.875rem;
-  font-weight: 600;
-}
-
-.review-feedback-form input,
-.review-feedback-form textarea {
-  width: 100%;
-  padding: 8px 10px;
-  border: 1px solid #b8c2cf;
-  border-radius: 6px;
-  background: #ffffff;
-}
-
-.review-feedback-form input:focus-visible,
-.review-feedback-form textarea:focus-visible,
-.review-feedback-form button:focus-visible,
-.review-round-action button:focus-visible {
-  outline: 3px solid #93c5d3;
-  outline-offset: 2px;
-}
-
-.review-feedback-form textarea {
-  min-height: 72px;
-  resize: vertical;
-}
-
-.review-feedback-form button {
-  align-self: end;
-  min-height: 40px;
-  padding: 8px 14px;
-  border: 0;
-  border-radius: 6px;
-  background: #326273;
-  color: #ffffff;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.review-round {
-  padding: 16px;
-  border: 1px solid #d6dde6;
-  border-radius: 8px;
-  background: #ffffff;
-}
-
-.review-round h3 {
-  margin-top: 0;
-  overflow-wrap: anywhere;
-}
-
-/* Round lifecycle (#39): the current round's status and its reviewer-driven
-   transition controls (finish / resolve / approve), shown only when valid. */
-.review-round-status {
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-}
-
-.review-round-controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 12px;
-}
-
-.review-round-state {
-  margin-top: 12px;
-  color: #4b5563;
-  font-weight: 600;
-}
-
-.review-round-action {
-  margin-top: 8px;
-}
-
-.review-round-action button {
-  min-height: 36px;
-  padding: 6px 14px;
-  border: 0;
-  border-radius: 6px;
-  background: #326273;
-  color: #ffffff;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.review-round-action button[data-round-action="approve"] {
-  background: #1a7f37;
-}
-
-.review-comment__resolved {
-  display: inline-block;
-  margin-top: 4px;
-  color: #1a7f37;
-  font-size: 0.8125rem;
-  font-weight: 700;
-}
-
-.review-comment__flags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 6px;
-}
-
-.review-comment__carried,
-.review-comment__drifted {
-  display: inline-block;
-  padding: 3px 7px;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 700;
-}
-
-.review-comment__carried {
-  background: #e0f2fe;
-  color: #075985;
-}
-
-.review-comment__drifted {
-  background: #fff1f2;
-  color: #9f1239;
-}
-
-/* Artifact-first review structure. Visual tokens remain deliberately plain until
-   the product design system is selected; these rules own hierarchy and layout. */
-.app-shell__inner--review {
-  width: min(1440px, 100%);
-}
-
-.review-surface__header {
   display: flex;
   align-items: end;
   justify-content: space-between;
-  gap: 32px;
+  gap: var(--s2);
+  padding-bottom: var(--s1);
+  border-bottom: 1.5px dashed var(--thread);
 }
 
 .review-surface__eyebrow,
 .review-documents__heading > p,
-.review-agent-summary__eyebrow {
+.review-agent-summary__eyebrow,
+.review-feedback__eyebrow {
   margin: 0;
-  color: #667085;
+  color: var(--signature-text);
+  font-family: var(--font-mono);
   font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
+  font-weight: 700;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
 .app-shell .review-surface__title {
   margin: 8px 0 14px;
   font-size: clamp(1.8rem, 3vw, 3rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
   line-height: 1.08;
+}
+
+.review-surface__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s0);
+}
+
+.review-surface__links a {
+  color: var(--signature-text);
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  font-weight: 650;
+  text-underline-offset: 3px;
 }
 
 .review-mode-toggle {
   display: flex;
   flex: 0 0 auto;
   padding: 3px;
-  border: 1px solid #b8c2cf;
-  border-radius: 8px;
-  background: #eef2f6;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: var(--surface);
 }
 
 .review-mode-toggle button {
-  min-height: 36px;
-  padding: 7px 14px;
+  min-height: 34px;
+  padding: 3px 14px;
   border: 0;
-  border-radius: 5px;
+  border-radius: 999px;
   background: transparent;
-  color: #4b5563;
-  font-weight: 700;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 550;
   cursor: pointer;
 }
 
 .review-mode-toggle button[aria-pressed="true"] {
-  background: #ffffff;
-  box-shadow: 0 1px 3px rgb(15 23 42 / 14%);
-  color: #172026;
+  background: var(--ground);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+  color: var(--text);
 }
 
 .review-mode-toggle button:focus-visible,
 .review-documents__list button:focus-visible,
 .review-guided__navigation button:focus-visible {
-  outline: 3px solid #93c5d3;
+  outline: 3px solid var(--signature);
   outline-offset: 2px;
 }
 
+/* the folio-numbered document index */
 .review-documents {
   display: grid;
   grid-template-columns: minmax(180px, 0.42fr) minmax(0, 2fr);
-  gap: 20px;
-  margin-top: 20px;
-  padding: 16px;
-  border: 1px solid #d6dde6;
-  border-radius: 8px;
-  background: #ffffff;
+  gap: var(--s1);
+  margin-top: var(--s1);
+  padding-bottom: var(--s0);
+  border-bottom: 1.5px dashed var(--thread);
 }
 
 .review-documents__heading {
@@ -596,11 +528,13 @@ select {
 .review-documents__heading h2 {
   margin: 5px 0 2px;
   font-size: 1.05rem;
+  font-weight: 600;
 }
 
 .review-documents__heading > span {
-  color: #667085;
+  color: var(--muted);
   font-size: 0.75rem;
+  font-family: var(--font-mono);
 }
 
 .review-documents__list {
@@ -618,35 +552,38 @@ select {
   gap: 4px 8px;
   width: 100%;
   min-height: 108px;
-  padding: 10px;
-  border: 1px solid #d6dde6;
-  border-radius: 6px;
-  background: #f8fafc;
-  color: #26323c;
+  padding: 10px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--muted);
   text-align: left;
   cursor: pointer;
 }
 
 .review-documents__list button:hover {
-  border-color: #82909f;
+  border-color: var(--thread);
+  color: var(--text);
 }
 
 .review-documents__list button[aria-current="true"] {
-  border-color: #326273;
-  box-shadow: inset 3px 0 #326273;
-  background: #f1f7f9;
+  border-color: var(--muted);
+  background: var(--surface-2);
+  color: var(--text);
 }
 
 .review-documents__number {
   grid-row: 1 / 5;
-  color: #326273;
-  font-weight: 800;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--signature-text);
 }
 
 .review-documents__role {
-  color: #667085;
+  font-family: var(--font-mono);
+  color: var(--muted);
   font-size: 0.65rem;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
@@ -661,48 +598,54 @@ select {
 
 .review-documents__list strong {
   font-size: 0.82rem;
+  font-weight: 600;
 }
 
 .review-documents__path,
 .review-documents__change {
-  color: #667085;
+  color: var(--muted);
+  font-family: var(--font-mono);
   font-size: 0.68rem;
 }
 
 .review-documents__change {
   padding-top: 5px;
-  border-top: 1px solid #e6ebf1;
+  border-top: 1px solid var(--hairline);
 }
 
 .review-documents__empty {
   margin: 0;
-  color: #667085;
+  color: var(--muted);
 }
 
+/* two facing pages: the evidence apparatus + the constant reading pane */
 .review-mode-layout--evidence {
   display: grid;
   grid-template-columns: minmax(240px, 0.65fr) minmax(0, 2fr);
-  gap: 20px;
-  margin-top: 20px;
+  gap: var(--s1);
+  margin-top: var(--s1);
+  align-items: start;
 }
 
 .review-agent-summary {
   align-self: start;
-  padding: 20px;
-  border: 1px solid #d6dde6;
-  border-radius: 8px;
-  background: #ffffff;
+  padding: var(--s1);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
 }
 
 .review-agent-summary h2 {
   margin: 6px 0 12px;
   font-size: 1.35rem;
+  font-weight: 600;
 }
 
 .review-agent-summary__description {
   margin: 0;
   padding-left: 18px;
-  color: #4b5563;
+  color: var(--muted);
   line-height: 1.6;
 }
 
@@ -712,26 +655,28 @@ select {
 
 .review-agent-summary__document {
   margin-top: 18px;
-  padding-top: 16px;
-  border-top: 1px solid #d6dde6;
+  padding-top: var(--s0);
+  border-top: 1px solid var(--hairline);
 }
 
 .review-agent-summary__document > span {
-  color: #667085;
+  color: var(--muted);
+  font-family: var(--font-mono);
   font-size: 0.68rem;
-  font-weight: 800;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
 .review-agent-summary__document h3 {
   margin: 5px 0;
   font-size: 0.95rem;
+  font-weight: 600;
   overflow-wrap: anywhere;
 }
 
 .review-agent-summary__document > p {
   margin: 0;
-  color: #4b5563;
+  color: var(--muted);
   font-size: 0.78rem;
 }
 
@@ -754,16 +699,17 @@ select {
 }
 
 .review-agent-summary__document dt {
-  color: #667085;
+  color: var(--muted);
 }
 
 .review-agent-summary__document dd {
-  font-weight: 700;
+  font-weight: 650;
+  font-family: var(--font-mono);
 }
 
 .review-agent-summary__source-note {
   margin: 18px 0 0;
-  color: #7b8490;
+  color: var(--muted);
   font-size: 0.68rem;
   line-height: 1.45;
 }
@@ -780,23 +726,286 @@ select {
   min-height: 520px;
 }
 
-.review-file__source-details {
-  margin-top: 18px;
-  border: 1px solid #d6dde6;
+.review-surface__files {
+  display: grid;
+  gap: var(--s1);
+  margin: var(--s1) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* the reading pane: the constant across the app, on a document surface */
+.review-file {
+  padding: var(--s1);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.review-file__marker {
+  display: inline-block;
+  margin-right: 8px;
+  padding: 3px 9px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--muted);
+}
+
+.review-file__marker--added {
+  color: var(--thread);
+  border-color: color-mix(in srgb, var(--thread) 40%, var(--hairline));
+}
+
+.review-file__marker--modified {
+  color: var(--text);
+  border-color: var(--muted);
+}
+
+.review-file__marker--deleted {
+  color: var(--signature-text);
+  border-color: color-mix(in srgb, var(--signature) 45%, var(--hairline));
+}
+
+.review-file__path {
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.review-file__md-diff,
+.review-file__md-rendered,
+.review-file__docx {
+  margin-top: var(--s0);
+  overflow-wrap: anywhere;
+}
+
+.review-file__html-rendered,
+.review-file__pdf {
+  width: 100%;
+  min-height: 360px;
+  margin-top: var(--s0);
+  border: 1px solid var(--hairline);
   border-radius: 8px;
-  background: #f8fafc;
+  background: var(--surface-2);
+}
+
+.review-file__download {
+  color: var(--signature-text);
+  font-family: var(--font-mono);
+  font-weight: 650;
+}
+
+/* the change ribbon: inline word diff, ins/del carried by weight + rule, not colour */
+.review-file__md-diff ins,
+.review-file__md-diff del {
+  text-decoration: none;
+}
+
+.review-file__md-diff ins {
+  color: var(--text);
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-color: var(--thread);
+  text-underline-offset: 3px;
+}
+
+.review-file__md-diff del {
+  color: var(--muted);
+  text-decoration: line-through;
+  text-decoration-color: var(--signature);
+}
+
+/* Sanitized HTML annotation copy (#65): the safe, selectable semantics surface. */
+.html-safe-copy {
+  margin-top: var(--s0);
+}
+
+.html-safe-copy__hint {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.html-safe-copy__text {
+  padding: var(--s0);
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: var(--surface);
+  overflow-wrap: break-word;
+  line-height: 1.6;
+}
+
+.html-safe-copy__text > :first-child {
+  margin-top: 0;
+}
+
+.html-safe-copy__text > :last-child {
+  margin-bottom: 0;
+}
+
+/* Source diff (#44): whitespace-preserving two-gutter table. Add/remove keep the
+   textual +/- marker (never colour alone) with a subtle themed row tint. */
+.review-file__source-diff-frame {
+  max-width: 100%;
+  margin: var(--s0) 0;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  overflow-x: auto;
+  background: var(--surface);
+}
+
+.review-file__source-diff {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.review-source-line__num {
+  width: 3.25rem;
+  padding: 0 6px;
+  color: var(--muted);
+  text-align: right;
+  white-space: nowrap;
+  vertical-align: top;
+  user-select: none;
+}
+
+.review-source-line__num--new {
+  border-right: 1px solid var(--hairline);
+  padding: 0;
+}
+
+.review-source-line__num--new[data-anchorable="false"]::after {
+  display: block;
+  width: 12px;
+  margin: 0.8rem auto;
+  border-top: 1px solid var(--muted);
+  content: "";
+  transform: rotate(-45deg);
+}
+
+.review-source-line__anchor {
+  width: 100%;
+  min-height: 1.75rem;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  text-align: right;
+  cursor: pointer;
+}
+
+.review-source-line__anchor:hover {
+  background: color-mix(in srgb, var(--thread) 18%, transparent);
+  color: var(--text);
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 2px;
+}
+
+.review-source-line__anchor:focus-visible {
+  position: relative;
+  z-index: 1;
+  outline: 3px double var(--signature);
+  outline-offset: -3px;
+}
+
+.review-source-line__anchor:active {
+  box-shadow: inset 0 0 0 2px currentColor;
+  transform: scale(0.92);
+}
+
+.review-source-line__anchor[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--thread) 22%, transparent);
+  box-shadow: inset 0 0 0 2px currentColor;
+  color: var(--text);
+  font-weight: 800;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 2px;
+}
+
+.review-source-line__marker {
+  width: 2rem;
+  padding: 0 6px;
+  color: var(--muted);
+  text-align: center;
+  vertical-align: top;
+  user-select: none;
+}
+
+.review-source-line__text {
+  min-width: 0;
+  padding: 3px 10px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.review-source-line--added {
+  background: color-mix(in srgb, var(--thread) 12%, transparent);
+}
+
+.review-source-line--added .review-source-line__marker {
+  color: var(--thread);
+  font-weight: 700;
+}
+
+.review-source-line--removed {
+  background: color-mix(in srgb, var(--signature) 12%, transparent);
+}
+
+.review-source-line--removed .review-source-line__marker {
+  color: var(--signature-text);
+  font-weight: 700;
+}
+
+.review-source-line[data-selected="true"] .review-source-line__text {
+  box-shadow:
+    inset 0 1px var(--signature),
+    inset 0 -1px var(--signature);
+  font-weight: 650;
+}
+
+.review-file__source-diff-empty {
+  margin: 0;
+  padding: var(--s0);
+  color: var(--muted);
+  font-size: 0.875rem;
+  font-style: italic;
+  text-align: center;
+}
+
+.review-file__source-details {
+  margin-top: var(--s0);
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: var(--surface-2);
 }
 
 .review-file__source-details > summary {
   padding: 11px 13px;
-  color: #326273;
+  color: var(--signature-text);
+  font-family: var(--font-mono);
   font-size: 0.8rem;
-  font-weight: 800;
+  font-weight: 700;
   cursor: pointer;
 }
 
 .review-file__source-details[open] > summary {
-  border-bottom: 1px solid #d6dde6;
+  border-bottom: 1px solid var(--hairline);
 }
 
 .review-file__source-details .review-file__source-diff-frame {
@@ -808,12 +1017,223 @@ select {
 .review-file__source-details .review-file__md-diff {
   margin: 0;
   padding: 14px;
-  border-bottom: 1px solid #d6dde6;
+  border-bottom: 1px solid var(--hairline);
 }
 
+/* ---- the feedback ledger (the Binding) -------------------------------------- */
+
+.review-feedback,
+.review-feedback-form,
+.review-round {
+  margin-top: var(--s1);
+}
+
+.review-feedback {
+  padding-top: var(--s1);
+  border-top: 1.5px dashed var(--thread);
+}
+
+.review-feedback__eyebrow {
+  color: var(--thread);
+  letter-spacing: 0.08em;
+}
+
+.review-feedback > h2 {
+  margin: 4px 0 var(--s0);
+  font-size: 1.35rem;
+  font-weight: 600;
+}
+
+.review-feedback-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  padding: var(--s0);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.review-feedback-form h3,
+.review-feedback-form h4 {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-weight: 600;
+}
+
+.review-feedback-form__anchor-hint {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 8px 10px;
+  border-left: 3px solid var(--thread);
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.review-feedback-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.review-feedback-form input,
+.review-feedback-form textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  background: var(--ground);
+  color: var(--text);
+}
+
+.review-feedback-form input:focus-visible,
+.review-feedback-form textarea:focus-visible,
+.review-feedback-form button:focus-visible,
+.review-round-action button:focus-visible {
+  outline: 3px solid var(--signature);
+  outline-offset: 2px;
+}
+
+.review-feedback-form textarea {
+  min-height: 72px;
+  resize: vertical;
+}
+
+/* the primary action inverts: accent border + accent text on the ground, never a
+   filled accent (DESIGN "Signature" - small-text contrast). */
+.review-feedback-form button,
+.review-round-action button {
+  align-self: end;
+  min-height: 40px;
+  padding: 9px 14px;
+  border: 1px solid var(--signature);
+  border-radius: 8px;
+  background: var(--ground);
+  color: var(--signature-text);
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.review-feedback-form button:hover,
+.review-round-action button:hover {
+  background: color-mix(in srgb, var(--signature) 10%, var(--ground));
+}
+
+.review-feedback-form button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.review-round {
+  padding: var(--s0);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.review-round h3 {
+  margin-top: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.review-round p {
+  color: var(--muted);
+}
+
+.review-round ul {
+  padding-left: 1.2em;
+}
+
+.review-round li + li {
+  margin-top: var(--sn1);
+}
+
+/* Round lifecycle (#39): status + reviewer-driven transition controls. */
+.review-round-status {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--text);
+}
+
+.review-round-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.review-round-state {
+  margin-top: 12px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.review-round-action {
+  margin-top: 8px;
+}
+
+.review-round-action button {
+  min-height: 36px;
+}
+
+/* Approve is the affirmative terminal action; it wears the thread, not the signature
+   (the signature is reserved for the whole-review add-feedback identity moment). */
+.review-round-action button[data-round-action="approve"] {
+  border-color: var(--thread);
+  color: var(--thread);
+}
+
+.review-round-action button[data-round-action="approve"]:hover {
+  background: color-mix(in srgb, var(--thread) 12%, var(--ground));
+}
+
+.review-comment__resolved {
+  display: inline-block;
+  margin-top: 4px;
+  color: var(--thread);
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.review-comment__flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.review-comment__carried,
+.review-comment__drifted {
+  display: inline-block;
+  padding: 3px 9px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 650;
+}
+
+.review-comment__carried {
+  color: var(--muted);
+}
+
+.review-comment__drifted {
+  color: var(--signature-text);
+  border-color: color-mix(in srgb, var(--signature) 45%, var(--hairline));
+}
+
+/* Guided review path (#57 lineage): a single-column stepped reading. */
 .review-mode-layout--guided {
   width: min(1080px, 100%);
-  margin: 20px auto 0;
+  margin: var(--s1) auto 0;
 }
 
 .review-guided__step {
@@ -822,9 +1242,9 @@ select {
   gap: 14px;
   margin-bottom: 12px;
   padding: 14px 16px;
-  border: 1px solid #d6dde6;
-  border-radius: 8px;
-  background: #f1f7f9;
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  background: var(--surface-2);
 }
 
 .review-guided__step p,
@@ -834,37 +1254,43 @@ select {
 }
 
 .review-guided__step p {
-  color: #326273;
+  color: var(--signature-text);
+  font-family: var(--font-mono);
   font-size: 0.72rem;
-  font-weight: 800;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
 .review-guided__step h2 {
   font-size: 1.05rem;
+  font-weight: 600;
 }
 
 .review-guided__step span {
-  color: #667085;
+  color: var(--muted);
   font-size: 0.75rem;
 }
 
 .review-guided__navigation {
   display: flex;
   justify-content: space-between;
-  gap: 16px;
+  gap: var(--s0);
   margin-top: 14px;
 }
 
 .review-guided__navigation button {
   min-height: 40px;
   padding: 8px 14px;
-  border: 1px solid #b8c2cf;
-  border-radius: 6px;
-  background: #ffffff;
-  color: #26323c;
-  font-weight: 700;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: var(--ground);
+  color: var(--text);
+  font-weight: 650;
   cursor: pointer;
+}
+
+.review-guided__navigation button:hover:not(:disabled) {
+  border-color: var(--thread);
 }
 
 .review-guided__navigation button:disabled {
@@ -899,33 +1325,38 @@ select {
   }
 }
 
-/* Rendered Mirror annotation (issue #64): a selectable normalized-text layer beside a
+/* Rendered annotation surface (issue #64): a selectable normalized-text layer beside a
    Word-style comment rail. Recogito owns the in-text highlight rendering (its own
    stylesheet is imported by the adapter); these rules own the doc-review layout. */
 .mirror-annotation {
-  margin: 16px 0;
+  margin: var(--s0) 0;
 }
 
 .mirror-annotation__hint {
   margin: 0 0 8px;
-  color: #4b5563;
+  color: var(--muted);
   font-size: 0.875rem;
 }
 
 .mirror-annotation__body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(240px, 320px);
-  gap: 16px;
+  gap: var(--s0);
   align-items: start;
 }
 
 .mirror-annotation__text {
-  padding: 16px;
-  border: 1px solid #d6dde6;
+  max-width: var(--measure);
+  padding: var(--s0);
+  border: 1px solid var(--hairline);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--surface);
   overflow-wrap: break-word;
-  line-height: 1.6;
+  line-height: 1.62;
+}
+
+.mirror-annotation__text ::selection {
+  background: color-mix(in srgb, var(--signature) 28%, transparent);
 }
 
 .mirror-annotation__text > :first-child {
@@ -945,38 +1376,37 @@ select {
 
 .mirror-comment-card {
   padding: 12px;
-  border: 1px solid #d6dde6;
-  border-left: 3px solid #326273;
+  border: 1px solid var(--hairline);
+  border-left: 2px solid var(--thread);
   border-radius: 6px;
-  background: #f9fbfd;
+  background: var(--surface-2);
 }
 
 .mirror-comment-card--draft {
-  border-left-color: #b45309;
-  background: #fffdf7;
+  border-left-color: var(--signature);
 }
 
 .mirror-comment-card[data-active] {
-  border-left-color: #1d4ed8;
-  box-shadow: 0 0 0 1px #1d4ed8;
+  border-left-color: var(--signature);
+  box-shadow: 0 0 0 1px var(--signature);
 }
 
 .mirror-comment-card__quote {
   margin: 0 0 8px;
-  color: #26323c;
+  color: var(--text);
   font-weight: 600;
   overflow-wrap: anywhere;
 }
 
 .mirror-comment-card__body {
   margin: 0 0 8px;
-  color: #4b5563;
+  color: var(--muted);
   overflow-wrap: anywhere;
 }
 
 .mirror-comment-card__drifted {
   margin: 0;
-  color: #b45309;
+  color: var(--signature-text);
   font-size: 0.8125rem;
 }
 
@@ -990,8 +1420,10 @@ select {
 .mirror-comment-card textarea {
   min-height: 72px;
   padding: 8px;
-  border: 1px solid #b8c2cf;
+  border: 1px solid var(--hairline);
   border-radius: 6px;
+  background: var(--ground);
+  color: var(--text);
   resize: vertical;
 }
 
@@ -1004,12 +1436,16 @@ select {
 .mirror-comment-card button {
   min-height: 36px;
   padding: 6px 12px;
-  border: 1px solid #b8c2cf;
+  border: 1px solid var(--hairline);
   border-radius: 6px;
-  background: #ffffff;
-  color: #26323c;
-  font-weight: 700;
+  background: var(--ground);
+  color: var(--text);
+  font-weight: 650;
   cursor: pointer;
+}
+
+.mirror-comment-card button:hover {
+  border-color: var(--thread);
 }
 
 @media (max-width: 980px) {

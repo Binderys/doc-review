@@ -1037,6 +1037,7 @@ function RetainedFeedback({
 
   return (
     <section className="review-feedback" aria-labelledby="feedback-title">
+      <p className="review-feedback__eyebrow">Binding</p>
       <h2 id="feedback-title">Retained feedback</h2>
       <p>
         Current round {currentRound.number} - {currentRound.headSha} -{" "}
