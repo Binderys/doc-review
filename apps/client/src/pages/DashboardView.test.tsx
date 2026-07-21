@@ -39,12 +39,12 @@ const fixture: DashboardResponse = {
       pullRequests: [],
     },
     {
-      repo: "acme/private-review",
+      repo: "globex/private-review",
       status: "unavailable",
       reason: "access",
     },
     {
-      repo: "acme/rate-limited-review",
+      repo: "globex/rate-limited-review",
       status: "unavailable",
       reason: "rate-limited",
     },
@@ -57,27 +57,42 @@ const fixture: DashboardResponse = {
 };
 
 describe("DashboardView", () => {
-  it("renders every availability state in order with semantic status text and safe links", () => {
+  it("groups repos under their GitHub owner with semantic status text and safe links", () => {
     const container = document.createElement("div");
     container.innerHTML = renderToStaticMarkup(<DashboardView {...fixture} />);
 
-    const headings = Array.from(container.querySelectorAll("h2"));
-    expect(headings.map((heading) => heading.textContent)).toEqual([
-      "acme/board-review",
-      "acme/empty-review",
-      "acme/private-review",
-      "acme/rate-limited-review",
-      "acme/offline-review",
+    // Owners head the grouping (h2), each in first-seen order; repos title their
+    // own sections (h3) under the owner they belong to.
+    const owners = Array.from(container.querySelectorAll("h2"));
+    expect(owners.map((heading) => heading.textContent)).toEqual([
+      "acme",
+      "globex",
     ]);
 
-    const groupFor = (repo: string): HTMLElement => {
-      const heading = headings.find((item) => item.textContent === repo);
+    const repoHeadings = Array.from(container.querySelectorAll("h3"));
+    expect(repoHeadings.map((heading) => heading.textContent)).toEqual([
+      "board-review",
+      "empty-review",
+      "offline-review",
+      "private-review",
+      "rate-limited-review",
+    ]);
+
+    // A one-line count of open PRs across every watched repo (available or not).
+    expect(container.textContent).toContain("1");
+    expect(container.textContent).toContain("open for review");
+    expect(container.textContent).toContain("5 watched repos");
+
+    const groupFor = (repoName: string): HTMLElement => {
+      const heading = repoHeadings.find(
+        (item) => item.textContent === repoName,
+      );
       const group = heading?.closest("section");
       expect(group).not.toBeNull();
       return group as HTMLElement;
     };
 
-    const healthy = groupFor("acme/board-review");
+    const healthy = groupFor("board-review");
     expect(healthy.textContent).toContain("Available");
     expect(healthy.textContent).toContain("#42");
     expect(healthy.textContent).toContain("Draft Q3 IC memo");
@@ -88,22 +103,25 @@ describe("DashboardView", () => {
       healthy.querySelector('a[href="/pr/acme/board-review/42"]'),
     ).not.toBeNull();
 
-    const empty = groupFor("acme/empty-review");
+    const empty = groupFor("empty-review");
     expect(empty.textContent).toContain("Available");
     expect(empty.textContent).toContain("No open pull requests.");
 
     const unavailableGroups = [
-      ["acme/private-review", "Access unavailable"],
-      ["acme/rate-limited-review", "Rate limited"],
-      ["acme/offline-review", "GitHub unavailable"],
+      ["private-review", "globex/private-review", "Access unavailable"],
+      ["rate-limited-review", "globex/rate-limited-review", "Rate limited"],
+      ["offline-review", "acme/offline-review", "GitHub unavailable"],
     ] as const;
-    for (const [repo, statusText] of unavailableGroups) {
-      const group = groupFor(repo);
+    for (const [repoName, slug, statusText] of unavailableGroups) {
+      const group = groupFor(repoName);
       expect(group.textContent).toContain(statusText);
       expect(group.querySelector("a")).toBeNull();
       expect(group.querySelector("ul")).toBeNull();
+      // The unavailable repo stays listed (its slug ids its section) but blocks nothing.
+      expect(group.getAttribute("aria-labelledby")).toBe(`repo-${slug}`);
     }
 
+    // No live-data backing exists for a retry action, so none is fabricated.
     expect(container.querySelector("button")).toBeNull();
     expect(container.textContent?.toLowerCase()).not.toContain("retry");
   });

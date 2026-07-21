@@ -1,16 +1,16 @@
 // Theme is state, not identity (binderys DESIGN "Grounds"): the control that flips it
 // never wears the signature, and the choice persists. Two verified grounds ship - a
 // cool paper white and a slate ink; surfaces open on ink unless the visitor chooses.
-export type StudioTheme = "paper" | "ink";
+export type Theme = "paper" | "ink";
 
-const STORAGE_KEY = "studio-theme";
-const DEFAULT_THEME: StudioTheme = "ink";
+const STORAGE_KEY = "doc-review-theme";
+const DEFAULT_THEME: Theme = "ink";
 
-function isTheme(value: string | null): value is StudioTheme {
+function isTheme(value: string | null): value is Theme {
   return value === "paper" || value === "ink";
 }
 
-export function readStoredTheme(): StudioTheme {
+export function readStoredTheme(): Theme {
   try {
     const stored = window.localStorage.getItem(STORAGE_KEY);
     return isTheme(stored) ? stored : DEFAULT_THEME;
@@ -19,8 +19,8 @@ export function readStoredTheme(): StudioTheme {
   }
 }
 
-export function applyTheme(theme: StudioTheme): void {
-  document.documentElement.setAttribute("data-studio-theme", theme);
+export function applyTheme(theme: Theme): void {
+  document.documentElement.setAttribute("data-theme", theme);
   try {
     window.localStorage.setItem(STORAGE_KEY, theme);
   } catch {

@@ -32,18 +32,16 @@ export function HomePage() {
   }, []);
 
   return (
-    <main className="app-shell">
-      <section className="app-shell__inner" aria-labelledby="page-title">
-        <p className="app-shell__eyebrow">doc-review</p>
-        <h1 id="page-title">Open pull requests</h1>
-        {error ? (
-          <p className="app-shell__error" role="alert">
-            {error}
-          </p>
-        ) : (
-          <DashboardView repos={data.repos} />
-        )}
-      </section>
+    <main className="app-shell__inner" aria-labelledby="page-title">
+      <p className="app-shell__eyebrow">doc-review</p>
+      <h1 id="page-title">Open pull requests</h1>
+      {error ? (
+        <p className="app-shell__error" role="alert">
+          {error}
+        </p>
+      ) : (
+        <DashboardView repos={data.repos} />
+      )}
     </main>
   );
 }

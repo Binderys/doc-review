@@ -143,59 +143,57 @@ export function ReviewSurfacePage() {
   };
 
   return (
-    <main className="app-shell">
-      <section
-        className="app-shell__inner app-shell__inner--review"
-        aria-label="Document review"
-      >
-        {error ? (
-          <p className="app-shell__error" role="alert">
-            {error}
-          </p>
-        ) : data ? (
-          <>
-            {feedbackError ? (
-              <p className="app-shell__error" role="alert">
-                {feedbackError}
-              </p>
-            ) : null}
-            <ReviewSurfaceView
-              {...data}
-              onSubmitFeedback={submitFeedback}
-              onFinish={() =>
-                runRoundAction((route) =>
-                  reviewSurfaceApi.finishRound(
-                    route.owner,
-                    route.repo,
-                    route.number,
-                  ),
-                )
-              }
-              onResolve={(commentId) =>
-                runRoundAction((route) =>
-                  reviewSurfaceApi.resolveComment(
-                    route.owner,
-                    route.repo,
-                    route.number,
-                    commentId,
-                  ),
-                )
-              }
-              onApprove={() =>
-                runRoundAction((route) =>
-                  reviewSurfaceApi.approveRound(
-                    route.owner,
-                    route.repo,
-                    route.number,
-                  ),
-                )
-              }
-            />
-          </>
-        ) : (
-          <p className="app-shell__loading">Loading review surface...</p>
-        )}
-      </section>
-    </main>
+    <section
+      className="app-shell__inner app-shell__inner--review"
+      aria-label="Document review"
+    >
+      {error ? (
+        <p className="app-shell__error" role="alert">
+          {error}
+        </p>
+      ) : data ? (
+        <>
+          {feedbackError ? (
+            <p className="app-shell__error" role="alert">
+              {feedbackError}
+            </p>
+          ) : null}
+          <ReviewSurfaceView
+            {...data}
+            onSubmitFeedback={submitFeedback}
+            onFinish={() =>
+              runRoundAction((route) =>
+                reviewSurfaceApi.finishRound(
+                  route.owner,
+                  route.repo,
+                  route.number,
+                ),
+              )
+            }
+            onResolve={(commentId) =>
+              runRoundAction((route) =>
+                reviewSurfaceApi.resolveComment(
+                  route.owner,
+                  route.repo,
+                  route.number,
+                  commentId,
+                ),
+              )
+            }
+            onApprove={() =>
+              runRoundAction((route) =>
+                reviewSurfaceApi.approveRound(
+                  route.owner,
+                  route.repo,
+                  route.number,
+                ),
+              )
+            }
+          />
+        </>
+      ) : (
+        <p className="app-shell__loading">Loading review surface...</p>
+      )}
+    </section>
   );
 }
