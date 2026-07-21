@@ -1,0 +1,955 @@
+/*
+  Studio prototype - throwaway styling for the whole Doc Review journey (dashboard ->
+  review surface). Every colour token is lifted verbatim from the canonical binderys
+  DESIGN.md (grounds, signature trio, thread pair, seam geometry, phi spacing). The
+  identity is translated into application chrome, not restyled by taste. Class names are
+  namespaced `st-` so nothing here can collide with the production App.css this file
+  deliberately does not load.
+*/
+
+:root {
+  /* Golden ratio is the source of truth; steps are computed, never rounded. */
+  --phi: 1.618;
+  --s0: 16px;
+  --sn1: calc(var(--s0) / var(--phi));
+  --sn2: calc(var(--s0) / var(--phi) / var(--phi));
+  --s1: calc(var(--s0) * var(--phi));
+  --s2: calc(var(--s1) * var(--phi));
+  --s3: calc(var(--s2) * var(--phi));
+  --s4: calc(var(--s3) * var(--phi));
+  --s5: calc(var(--s4) * var(--phi));
+
+  --measure: 64ch;
+  --container: calc(var(--measure) * var(--phi));
+
+  --seam-dasharray: 7.5 3;
+
+  --font-sans:
+    "Wanted Sans Variable", ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono:
+    "D2Coding", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    monospace;
+}
+
+/* Grounds and verified derived neutrals (DESIGN "Grounds"/"Signature"/"Thread"). */
+:root[data-studio-theme="paper"] {
+  --ground: #edeef0;
+  --surface: #f7f7f8;
+  --surface-2: #eceded;
+  --text: #111319;
+  --muted: #6b6862;
+  --hairline: #d5d5d4;
+  --signature: #c4524a;
+  --signature-text: #7c2d2d;
+  --thread: #7d6a5a;
+  --shadow: 0 1px 2px rgba(17, 19, 25, 0.05), 0 8px 24px rgba(17, 19, 25, 0.06);
+  color-scheme: light;
+}
+
+:root[data-studio-theme="ink"] {
+  --ground: #111319;
+  --surface: #16181e;
+  --surface-2: #1a1c23;
+  --text: #edeef0;
+  --muted: #898b93;
+  --hairline: #25272d;
+  --signature: #c4524a;
+  --signature-text: #cb625c;
+  --thread: #bda58f;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 12px 32px rgba(0, 0, 0, 0.32);
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+}
+body {
+  background: var(--ground);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-weight: 450;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+:where(a, button, [tabindex]):focus-visible {
+  outline: 3px solid var(--signature);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .st-card__hit,
+  .st-btn,
+  .st-index__item {
+    transition:
+      transform 0.14s ease,
+      border-color 0.14s ease,
+      background 0.14s ease;
+  }
+}
+
+/* ---- frame ------------------------------------------------------------------ */
+
+.st-shell {
+  min-height: 100vh;
+  padding: var(--s1) clamp(var(--s0), 4vw, var(--s2)) var(--s4);
+}
+.st-frame {
+  width: min(calc(var(--container) + var(--s5)), 100%);
+  margin: 0 auto;
+}
+
+/* ---- masthead --------------------------------------------------------------- */
+
+.st-masthead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s0);
+  padding-bottom: var(--sn1);
+  border-bottom: 1px solid var(--hairline);
+}
+.st-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+}
+.st-mark {
+  width: 20px;
+  height: 20px;
+  transform: translateY(-0.1em);
+  color: var(--text);
+}
+.st-wordmark {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.058em;
+  color: var(--text);
+}
+.st-sibling {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--sn1);
+  padding-left: var(--sn1);
+  border-left: 1px solid var(--hairline);
+}
+.st-folio {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--signature-text);
+}
+.st-sibling__name {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+.st-crumb {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.st-masthead__spacer {
+  flex: 1 1 var(--s2);
+}
+
+.st-theme {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: var(--surface);
+}
+.st-theme button {
+  min-height: 32px;
+  padding: 3px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 550;
+}
+.st-theme button[aria-pressed="true"] {
+  background: var(--ground);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+
+/* ---- dashboard -------------------------------------------------------------- */
+
+.st-dashboard {
+  padding-top: var(--s1);
+}
+.st-count {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: var(--muted);
+  letter-spacing: 0.01em;
+}
+.st-count__n {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.st-repo {
+  margin-top: var(--s2);
+}
+.st-repo__head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s0);
+  padding-bottom: var(--sn1);
+  margin-bottom: var(--s0);
+  /* The Binding rule: the site-wide dashed seam motif, in the thread colour. */
+  border-bottom: 1.5px dashed var(--thread);
+}
+.st-repo__name {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  letter-spacing: -0.01em;
+}
+.st-repo__owner {
+  color: var(--muted);
+  font-weight: 500;
+}
+.st-repo__slash {
+  color: var(--muted);
+  margin: 0 0.15em;
+}
+.st-repo__status {
+  font-size: 0.78rem;
+  font-family: var(--font-mono);
+  color: var(--muted);
+  letter-spacing: 0.02em;
+}
+.st-repo__status--ok span {
+  color: var(--thread);
+}
+.st-repo__status--down {
+  color: var(--signature-text);
+}
+/* designed empty / unavailable state */
+.st-repostate {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s0);
+  padding: var(--s1);
+  border: 1.5px dashed var(--hairline);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.st-repostate--unavailable {
+  border-color: color-mix(in srgb, var(--signature) 40%, var(--hairline));
+}
+.st-repostate__mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--muted);
+}
+.st-repostate__mark svg {
+  width: 22px;
+  height: 22px;
+}
+.st-repostate__copy {
+  min-width: 0;
+}
+.st-repostate__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 5px;
+  font-size: 0.98rem;
+  font-weight: 600;
+}
+.st-repostate__glyph {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.st-repostate--unavailable .st-repostate__glyph {
+  color: var(--signature-text);
+}
+.st-repostate__body {
+  margin: 0;
+  max-width: 60ch;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+.st-repostate__action {
+  margin-top: var(--s0);
+}
+
+.st-cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: var(--s0);
+}
+.st-card {
+  display: flex;
+}
+.st-card__hit {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sn1);
+  width: 100%;
+  text-align: left;
+  padding: var(--s0);
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+}
+.st-card__hit:hover {
+  transform: translateY(-2px);
+  border-color: var(--thread);
+}
+.st-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sn1);
+}
+.st-card__number {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--signature-text);
+}
+.st-card__title {
+  margin: 0;
+  font-size: 1.08rem;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+.st-card__summary {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.st-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: auto;
+  padding-top: var(--sn1);
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-family: var(--font-mono);
+}
+.st-card__branch {
+  color: var(--text);
+}
+.st-card__age {
+  margin-left: auto;
+}
+.st-dot {
+  color: var(--hairline);
+}
+
+/* ---- state tag (label + non-colour glyph, never colour alone) --------------- */
+
+.st-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 3px 9px 3px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--hairline);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.st-state__glyph {
+  font-size: 0.7rem;
+}
+.st-state--changes {
+  color: var(--signature-text);
+  border-color: color-mix(in srgb, var(--signature) 45%, var(--hairline));
+}
+.st-state--approved {
+  color: var(--thread);
+  border-color: color-mix(in srgb, var(--thread) 40%, var(--hairline));
+}
+.st-state--in-review {
+  color: var(--text);
+  border-color: var(--muted);
+}
+
+/* ---- format chips ----------------------------------------------------------- */
+
+.st-formats {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.st-format {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--hairline);
+  font-size: 0.74rem;
+}
+.st-format__kind {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.st-format--md .st-format__kind {
+  color: var(--signature-text);
+}
+.st-format--docx .st-format__kind {
+  color: var(--thread);
+}
+.st-format__path {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+}
+
+/* ---- review surface --------------------------------------------------------- */
+
+.st-review {
+  padding-top: var(--s1);
+}
+.st-review__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s0);
+  margin-bottom: var(--s1);
+}
+.st-back {
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.st-back:hover {
+  color: var(--text);
+  border-color: var(--thread);
+}
+.st-review__ident {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--sn1);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+}
+.st-review__repo {
+  color: var(--muted);
+}
+.st-review__number {
+  color: var(--signature-text);
+  font-weight: 700;
+}
+.st-review__title {
+  margin: 0 0 var(--sn1);
+  max-width: var(--measure);
+  font-size: clamp(1.6rem, 3.5vw, 2.3rem);
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+.st-review__summary {
+  margin: 0 0 var(--sn1);
+  max-width: var(--measure);
+  color: var(--muted);
+  line-height: 1.55;
+}
+.st-review__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.st-review__branch {
+  color: var(--text);
+}
+
+/* document index (folio strip) */
+.st-index {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: var(--s1) 0;
+  padding-bottom: var(--s0);
+  border-bottom: 1.5px dashed var(--thread);
+}
+.st-index__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--muted);
+}
+.st-index__item:hover {
+  border-color: var(--thread);
+  color: var(--text);
+}
+.st-index__item.is-active {
+  background: var(--surface-2);
+  color: var(--text);
+  border-color: var(--muted);
+}
+.st-index__folio {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--signature-text);
+}
+.st-index__name {
+  font-size: 0.85rem;
+  font-weight: 550;
+}
+.st-index__kind {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--muted);
+  letter-spacing: 0.03em;
+}
+
+/* two facing pages: document + apparatus */
+.st-review__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.618fr) minmax(280px, 1fr);
+  gap: var(--s1);
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .st-review__body {
+    grid-template-columns: 1fr;
+  }
+}
+
+.st-doc {
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  padding: var(--s1);
+  box-shadow: var(--shadow);
+}
+.st-doc__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s0);
+  padding-bottom: var(--sn1);
+  margin-bottom: var(--s0);
+  border-bottom: 1px solid var(--hairline);
+}
+.st-doc__change {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--muted);
+  letter-spacing: 0.03em;
+}
+.st-doc__note {
+  margin: 0 0 var(--s0);
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+/* the reading canvas; page-shaped deliverables (canonical, pdf) sit on a sheet */
+.st-canvas--sheet {
+  padding: var(--s1) var(--s2);
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  background: var(--surface-2);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--hairline) 60%, transparent),
+    0 1px 0 var(--hairline);
+}
+.st-canvas--sheet[data-format="pdf"] {
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      transparent,
+      transparent calc(var(--s5) * 1.4),
+      var(--hairline) calc(var(--s5) * 1.4),
+      var(--hairline) calc(var(--s5) * 1.4 + 1px)
+    ),
+    var(--surface-2);
+}
+.st-canvas .st-prose ::selection {
+  background: color-mix(in srgb, var(--signature) 28%, transparent);
+}
+
+/* the floating action that appears at a selection - the signature review gesture */
+.st-quotebtn {
+  position: fixed;
+  z-index: 20;
+  transform: translate(-50%, calc(-100% - 8px));
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 11px;
+  border: 1px solid var(--signature);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--signature-text);
+  font-size: 0.8rem;
+  font-weight: 650;
+  box-shadow: var(--shadow);
+  white-space: nowrap;
+}
+.st-quotebtn::after {
+  /* a small pointer down to the selected passage */
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -5px;
+  width: 8px;
+  height: 8px;
+  transform: translateX(-50%) rotate(45deg);
+  background: var(--surface);
+  border-right: 1px solid var(--signature);
+  border-bottom: 1px solid var(--signature);
+}
+.st-quotebtn:hover {
+  background: color-mix(in srgb, var(--signature) 10%, var(--surface));
+}
+@media (prefers-reduced-motion: no-preference) {
+  .st-quotebtn {
+    animation: st-pop 0.12s ease-out;
+  }
+  @keyframes st-pop {
+    from {
+      opacity: 0;
+      transform: translate(-50%, calc(-100% - 2px));
+    }
+  }
+}
+
+/* the change ribbon: inline word diff, ins/del carried by weight + rule, not colour */
+.st-ribbon {
+  margin: 0 0 var(--s0);
+  padding: var(--sn1) var(--s0);
+  background: var(--surface-2);
+  border-left: 2px solid var(--thread);
+  border-radius: 0 6px 6px 0;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.st-ribbon--whole {
+  font-style: italic;
+}
+.st-ins {
+  color: var(--text);
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-color: var(--thread);
+  text-underline-offset: 3px;
+}
+.st-del {
+  color: var(--muted);
+  text-decoration: line-through;
+  text-decoration-color: var(--signature);
+}
+
+/* the constant reading pane */
+.st-prose {
+  max-width: var(--measure);
+  line-height: 1.62;
+  font-size: 1.02rem;
+}
+.st-prose h1 {
+  font-size: 1.7rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin: 0 0 var(--s0);
+}
+.st-prose h2 {
+  font-size: 1.35rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: var(--s1) 0 var(--sn1);
+}
+.st-prose h3 {
+  font-size: 1.05rem;
+  font-weight: 650;
+  margin: var(--s0) 0 var(--sn2);
+}
+.st-prose p {
+  margin: 0 0 var(--s0);
+}
+.st-prose ul {
+  margin: 0 0 var(--s0);
+  padding-left: 1.3em;
+}
+.st-prose li {
+  margin-bottom: var(--sn2);
+}
+.st-prose table {
+  border-collapse: collapse;
+  margin: var(--sn1) 0 var(--s0);
+  font-size: 0.92rem;
+}
+.st-prose th,
+.st-prose td {
+  border: 1px solid var(--hairline);
+  padding: 6px 12px;
+  text-align: left;
+}
+.st-prose th {
+  background: var(--surface-2);
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+/* ---- feedback ledger -------------------------------------------------------- */
+
+.st-ledger {
+  position: sticky;
+  top: var(--s0);
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  padding: var(--s0);
+  box-shadow: var(--shadow);
+}
+.st-ledger__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-bottom: var(--sn1);
+  margin-bottom: var(--sn1);
+  border-bottom: 1.5px dashed var(--thread);
+}
+.st-ledger__label {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  color: var(--thread);
+}
+.st-ledger__round {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.st-ledger__state {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sn1);
+  margin: 0 0 var(--s0);
+}
+.st-ledger__notecount {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--muted);
+}
+.st-ledger__empty,
+.st-ledger__hint {
+  margin: 0 0 var(--s0);
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+.st-ledger__hint {
+  padding-bottom: var(--sn1);
+  border-bottom: 1px dashed var(--hairline);
+}
+
+/* the note composer, opened by selecting a passage */
+.st-composer {
+  margin: 0 0 var(--s0);
+  padding: var(--sn1);
+  border: 1px solid var(--signature);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+.st-composer__quote {
+  margin: 0 0 var(--sn1);
+  padding-left: var(--sn1);
+  border-left: 2px solid var(--signature);
+  font-size: 0.8rem;
+  font-style: italic;
+  color: var(--muted);
+  line-height: 1.4;
+  max-height: 4.4em;
+  overflow: hidden;
+}
+.st-composer__body {
+  display: block;
+  width: 100%;
+  resize: vertical;
+  padding: 8px 10px;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: var(--ground);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+.st-composer__body:focus-visible {
+  outline: 2px solid var(--signature);
+  outline-offset: 1px;
+}
+.st-composer__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: var(--sn1);
+}
+.st-composer__actions .st-btn {
+  flex: 1;
+}
+.st-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.st-ledger__done {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--thread);
+}
+
+.st-notes {
+  list-style: none;
+  margin: 0 0 var(--s0);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s0);
+}
+.st-note {
+  padding-left: var(--sn1);
+  border-left: 2px solid var(--hairline);
+}
+.st-note--drifted {
+  border-left-color: var(--signature);
+}
+.st-note__quote {
+  margin: 0 0 5px;
+  font-size: 0.82rem;
+  color: var(--muted);
+  font-style: italic;
+  line-height: 1.45;
+}
+.st-note__body {
+  margin: 0 0 5px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+.st-note__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+.st-flag {
+  margin-left: auto;
+  font-weight: 600;
+}
+.st-flag--drifted {
+  color: var(--signature-text);
+}
+.st-flag--resolved {
+  color: var(--thread);
+}
+
+.st-ledger__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: var(--sn1);
+  border-top: 1px solid var(--hairline);
+}
+.st-btn {
+  padding: 9px 14px;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: var(--ground);
+  font-size: 0.88rem;
+  font-weight: 550;
+}
+.st-btn:hover {
+  border-color: var(--thread);
+}
+/* accent-filled control only at large-text scale would fail small-text contrast, so the
+   primary action inverts: accent border + accent text on the ground (DESIGN "Signature"). */
+.st-btn--primary {
+  border-color: var(--signature);
+  color: var(--signature-text);
+  font-weight: 650;
+}
+.st-btn--primary:hover {
+  background: color-mix(in srgb, var(--signature) 10%, var(--ground));
+}
+
+/* ---- footer ----------------------------------------------------------------- */
+
+.st-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: var(--s3);
+  padding-top: var(--s0);
+  border-top: 1px solid var(--hairline);
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+.st-foot__mark {
+  width: 16px;
+  height: 16px;
+  color: var(--muted);
+  flex: none;
+}
