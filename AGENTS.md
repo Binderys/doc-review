@@ -74,6 +74,10 @@ labels, and domain layout point at `Binderys/doc-review`.
 Issues and PRDs live as GitHub issues in `Binderys/doc-review`, via the `gh` CLI.
 External PRs are not a triage surface. See `docs/agents/issue-tracker.md`.
 
+Open issues here also auto-add to the `@Binderys's Ops` project board, where they
+always carry `Category = Portfolio apps` - a fixed rule, set at issue creation. The
+board contract is owned by `Binderys/binderys` at `docs/agents/issue-tracker.md`.
+
 ### Triage labels
 
 Five canonical triage roles mapped to their default label strings
