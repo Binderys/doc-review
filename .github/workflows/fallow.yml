@@ -46,7 +46,7 @@ jobs:
           fetch-depth: 0
 
       - name: Fallow diff-scoped audit
-        uses: fallow-rs/fallow@32b3f89fe28c286c85a6b0aed4ec5be120f54da6 # v3.6.0
+        uses: fallow-rs/fallow@28810138faa8fdbc830b8d585d0c15d65c39c3fd # v3.10.0
         with:
           version: "3.6.0"
           changed-since: origin/main
