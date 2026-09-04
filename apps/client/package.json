@@ -15,19 +15,19 @@
   "dependencies": {
     "@doc-review/api-contracts": "workspace:*",
     "@doc-review/shared": "workspace:*",
-    "@recogito/text-annotator": "4.2.5",
-    "@vitejs/plugin-react": "^6.0.3",
-    "dompurify": "^3.4.12",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "vite": "^8.1.5"
+    "@recogito/text-annotator": "4.2.6",
+    "@vitejs/plugin-react": "^6.1.1",
+    "dompurify": "^3.4.14",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "vite": "^8.2.2"
   },
   "devDependencies": {
-    "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0",
-    "happy-dom": "^20.10.6",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.5",
+    "happy-dom": "^20.12.0",
     "jsdom": "^29.1.1",
     "typescript": "^5.8.0",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11"
   }
 }
